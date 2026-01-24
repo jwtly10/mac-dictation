@@ -2,7 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {Events} from '@wailsio/runtime';
 import {App as AppService} from '../../bindings/mac-dictation';
 import {config} from '../config';
-import type {RecordingState, TranscriptionData, Message} from '../types';
+import type {Message, RecordingState, TranscriptionData} from '../types';
 
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
@@ -38,7 +38,9 @@ export function useRecording(options: UseRecordingOptions = {}) {
             Events.On('recording:progress', (ev: Events.WailsEvent) => {
                 setDurationSecs(ev.data as number);
             }),
-            Events.On('recording:stopped', () => {}),
+            Events.On('recording:stopped', () => {
+                setState((current) => current === 'recording' ? 'idle' : current);
+            }),
             Events.On('transcription:started', () => {
                 setState('transcribing');
             }),
