@@ -1,145 +1,77 @@
-import {useCallback, useEffect, useState} from 'react';
-import {Events} from '@wailsio/runtime';
-import {App as AppService} from '../bindings/mac-dictation';
-
-type RecordingState = 'idle' | 'recording' | 'transcribing' | 'error';
-
-interface TranscriptionData {
-    text: string;
-    provider: string;
-}
-
-function formatDuration(secs: number): string {
-    const mins = Math.floor(secs / 60);
-    const remainingSecs = Math.floor(secs % 60);
-    return `${mins}:${remainingSecs.toString().padStart(2, '0')}`;
-}
-
-const STATUS_CONFIG: Record<RecordingState, { dot?: string; text: string }> = {
-    idle: {text: 'Ready'},
-    recording: {dot: 'bg-red-500', text: 'Recording'},
-    transcribing: {dot: 'bg-yellow-500', text: 'Transcribing'},
-    error: {dot: 'bg-red-500', text: 'Error'},
-};
+import {useState, useCallback, useMemo} from 'react';
+import {useRecording} from './hooks/useRecording';
+import {useThreads} from './hooks/useThreads';
+import {Sidebar, ChatView, TitleBar, ThreadHeader} from './components';
 
 function App() {
-    const [state, setState] = useState<RecordingState>('idle');
-    const [error, setError] = useState<string | null>(null);
-    const [transcript, setTranscript] = useState('');
-    const [provider, setProvider] = useState('');
-    const [durationSecs, setDurationSecs] = useState(0);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [sidebarWidth, setSidebarWidth] = useState(224);
+    const threads = useThreads();
 
-    useEffect(() => {
-        const unsubs = [
-            Events.On('recording:started', () => {
-                setState('recording');
-                setError(null);
-                setTranscript('');
-                setDurationSecs(0);
-            }),
-            Events.On('recording:progress', (ev: Events.WailsEvent) => {
-                setDurationSecs(ev.data as number);
-            }),
-            Events.On('recording:stopped', () => {
-            }),
-            Events.On('transcription:started', () => {
-                setState('transcribing');
-            }),
-            Events.On('transcription:completed', (ev: Events.WailsEvent) => {
-                const data = ev.data as TranscriptionData;
-                setTranscript(data.text);
-                setProvider(data.provider);
-                setState('idle');
-            }),
-            Events.On('error', (ev: Events.WailsEvent) => {
-                setError(ev.data as string);
-                setState('error');
-            }),
-        ];
+    const recordingOptions = useMemo(() => ({
+        onTranscriptionComplete: threads.addMessage,
+    }), [threads.addMessage]);
 
-        return () => unsubs.forEach(fn => fn());
-    }, []);
+    const recording = useRecording(recordingOptions);
 
-    const start = useCallback(() => AppService.StartRecording(), []);
-    const stop = useCallback(() => AppService.StopRecording(), []);
-    const cancel = useCallback(() => AppService.CancelRecording(), []);
-    const hideWindow = useCallback(() => AppService.HideWindow(), []);
-    const clear = useCallback(() => {
-        setTranscript('');
-        setProvider('');
-        setError(null);
-        if (state === 'error') setState('idle');
-    }, [state]);
+    const handleNewThread = useCallback(() => {
+        threads.createThread();
+        setSidebarOpen(false);
+    }, [threads]);
 
-    const status = STATUS_CONFIG[state];
-    const isRecording = state === 'recording';
-    const isTranscribing = state === 'transcribing';
-    const isBusy = isRecording || isTranscribing;
-    const hasContent = transcript || error;
+    const handleSelectThread = useCallback((threadId: string | null) => {
+        threads.selectThread(threadId);
+        setSidebarOpen(false);
+    }, [threads]);
+
+    const handleStartRecording = useCallback(() => {
+        if (!threads.activeThreadId) {
+            threads.createThread();
+        }
+        recording.startRecording();
+    }, [threads, recording]);
+
+    const handleTitleChange = useCallback((newTitle: string) => {
+        if (threads.activeThreadId) {
+            threads.renameThread(threads.activeThreadId, newTitle);
+        }
+    }, [threads]);
 
     return (
-        <div className="min-h-screen bg-black/50 backdrop-blur-md p-4 drag-handle">
-            <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                    {status.dot && (
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${status.dot}`}/>
-                    )}
-                    <span className="text-xs text-white/60">
-                        {status.text}
-                        {isRecording && ` ${formatDuration(durationSecs)}`}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2">
-                    {provider && (
-                        <span className="text-xs text-white/40">{provider}</span>
-                    )}
-                    <button
-                        onClick={hideWindow}
-                        className="no-drag w-5 h-5 flex items-center justify-center rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
-                        title="Hide window"
-                    >
-                        ✕
-                    </button>
-                </div>
-            </div>
+        <div className="h-screen flex flex-col bg-black/50 backdrop-blur-xl overflow-hidden relative">
+            <Sidebar
+                threads={threads.threads}
+                activeThreadId={threads.activeThreadId}
+                isOpen={sidebarOpen}
+                width={sidebarWidth}
+                onWidthChange={setSidebarWidth}
+                onToggle={() => setSidebarOpen(!sidebarOpen)}
+                onSelectThread={handleSelectThread}
+                onNewThread={handleNewThread}
+                onDeleteThread={threads.deleteThread}
+            />
 
-            <div className="no-drag min-h-[60px] max-h-[100px] overflow-y-auto mb-3 text-sm">
-                {error && <p className="text-red-400">{error}</p>}
-                {transcript && (
-                    <p className="text-white/90 leading-relaxed select-text">{transcript}</p>
-                )}
-                {!hasContent && !isBusy && (
-                    <p className="text-white/40 text-xs">Press Record to start</p>
-                )}
-            </div>
+            <TitleBar onHide={recording.hideWindow}/>
 
-            <div className="flex items-center justify-center gap-2">
-                {isRecording ? (
-                    <>
-                        <button className="no-drag btn btn-sm btn-error" onClick={stop}>
-                            Stop
-                        </button>
-                        <button className="no-drag btn btn-sm btn-ghost text-white/40" onClick={cancel}>
-                            Cancel
-                        </button>
-                    </>
-                ) : isTranscribing ? (
-                    <button className="no-drag btn btn-sm loading" disabled>
-                        Processing
-                    </button>
-                ) : (
-                    <>
-                        <button className="no-drag btn btn-sm btn-primary" onClick={start}>
-                            Record
-                        </button>
-                        {hasContent && (
-                            <button className="no-drag btn btn-sm btn-ghost text-white/40" onClick={clear}>
-                                Clear
-                            </button>
-                        )}
-                    </>
-                )}
-            </div>
+            <ThreadHeader
+                title={threads.activeThread?.name ?? 'New Thread'}
+                hasTranscript={!!recording.lastTranscript}
+                copied={recording.copied}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                onTitleChange={handleTitleChange}
+                onCopy={recording.handleCopy}
+            />
+
+            <main className="flex-1 min-h-0">
+                <ChatView
+                    thread={threads.activeThread}
+                    recordingState={recording.state}
+                    durationSecs={recording.durationSecs}
+                    onStart={handleStartRecording}
+                    onStop={recording.stopRecording}
+                    onCancel={recording.cancelRecording}
+                />
+            </main>
         </div>
     );
 }

@@ -39,12 +39,12 @@ func main() {
 
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:         "Voice Dictation",
-		Width:         320,
-		Height:        220,
+		Width:         520,
+		Height:        420,
 		Hidden:        false,
-		AlwaysOnTop:   true,
+		AlwaysOnTop:   false,
 		Frameless:     true,
-		DisableResize: true,
+		DisableResize: false,
 		URL:           "/",
 		Mac: application.MacWindow{
 			Backdrop:                application.MacBackdropTranslucent,
