@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -47,7 +48,7 @@ func (s *DeepgramService) Transcribe(audioData []byte) (string, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			fmt.Printf("Failed to close response body: %v\n", err)
+			slog.Error("failed to close response body", "error", err)
 		}
 	}(resp.Body)
 

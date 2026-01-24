@@ -2,6 +2,7 @@ package audio
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -96,7 +97,7 @@ func (r *Recorder) StopRecording() ([]byte, error) {
 	if r.device != nil {
 		err := r.device.Stop()
 		if err != nil {
-			fmt.Printf("Failed to stop capture device on stop: %v\n", err)
+			slog.Error("failed to stop capture device on stop", "error", err)
 			return nil, fmt.Errorf("failed to stop capture device on stop: %w", err)
 		}
 		r.device.Uninit()
@@ -126,7 +127,7 @@ func (r *Recorder) CancelRecording() error {
 	if r.device != nil {
 		err := r.device.Stop()
 		if err != nil {
-			fmt.Printf("Failed to stop capture device on cancel: %v\n", err)
+			slog.Error("failed to stop capture device on cancel", "error", err)
 			return fmt.Errorf("failed to stop capture device on cancel: %w", err)
 		}
 		r.device.Uninit()
@@ -163,7 +164,7 @@ func (r *Recorder) Shutdown() error {
 	if r.malgoCtx != nil {
 		err := r.malgoCtx.Uninit()
 		if err != nil {
-			fmt.Printf("Failed to uninitialize audio context: %v\n", err)
+			slog.Error("failed to uninitialize audio context", "error", err)
 		}
 		r.malgoCtx.Free()
 	}

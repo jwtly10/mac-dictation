@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"mac-dictation/internal/audio"
 	"mac-dictation/internal/transcription"
 	"os"
@@ -45,7 +46,7 @@ func NewApp() *App {
 
 	deepgramApiKey := os.Getenv("DEEPGRAM_API_KEY")
 	if deepgramApiKey == "" {
-		fmt.Println("Warning: DEEPGRAM_API_KEY not set")
+		slog.Warn("DEEPGRAM_API_KEY not set")
 	}
 	return &App{
 		recorder:    audio.NewRecorder(),
