@@ -30,6 +30,8 @@ func main() {
 		},
 	})
 
+	appService.SetApplication(app)
+
 	systemTray := app.SystemTray.New()
 
 	if runtime.GOOS == "darwin" {
@@ -46,7 +48,7 @@ func main() {
 			TitleBar:                application.MacTitleBarHiddenInset,
 			InvisibleTitleBarHeight: 30,
 		},
-		AlwaysOnTop:   true,
+		AlwaysOnTop:   false,
 		Frameless:     true,
 		DisableResize: false,
 		URL:           "/",

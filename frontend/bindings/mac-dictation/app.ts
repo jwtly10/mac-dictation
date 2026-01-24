@@ -7,41 +7,39 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as $models from "./models.js";
+import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.js";
 
 /**
- * CancelRecording stops recording without transcribing
+ * CancelRecording cancels recording in progress and emits EventRecordingStopped.
  */
 export function CancelRecording(): $CancellablePromise<void> {
     return $Call.ByID(1993463310);
 }
 
-/**
- * GetRecordingStatus returns current recording state
- */
-export function GetRecordingStatus(): $CancellablePromise<$models.RecordingStatus> {
-    return $Call.ByID(881621012).then(($result: any) => {
-        return $$createType0($result);
-    });
+export function SetApplication(app: application$0.App | null): $CancellablePromise<void> {
+    return $Call.ByID(4121261467, app);
 }
 
 /**
- * StartRecording begins audio capture
+ * StartRecording starts recording using the preconfigured recorder.
+ * 
+ * Emits "recording:started" once the recording thread starts.
+ * 
+ * Emits "recording:progress" periodically.
  */
 export function StartRecording(): $CancellablePromise<void> {
     return $Call.ByID(4179347122);
 }
 
 /**
- * StopRecording stops audio capture and sends to Deepgram for transcription
+ * StopRecording stops recording and triggers transcription asynchronously.
+ * 
+ * Emits "recording:stopped" before starting transcription.
+ * 
+ * Emits "transcription:started" before transcription starts.
+ * 
+ * Emits "transcription:completed" with the transcription result.
  */
-export function StopRecording(): $CancellablePromise<$models.TranscriptionResult | null> {
-    return $Call.ByID(3372080196).then(($result: any) => {
-        return $$createType2($result);
-    });
+export function StopRecording(): $CancellablePromise<void> {
+    return $Call.ByID(3372080196);
 }
-
-// Private type creation functions
-const $$createType0 = $models.RecordingStatus.createFrom;
-const $$createType1 = $models.TranscriptionResult.createFrom;
-const $$createType2 = $Create.Nullable($$createType1);
