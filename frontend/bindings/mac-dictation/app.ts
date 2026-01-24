@@ -16,8 +16,36 @@ export function CancelRecording(): $CancellablePromise<void> {
     return $Call.ByID(1993463310);
 }
 
+export function HideWindow(): $CancellablePromise<void> {
+    return $Call.ByID(542966029);
+}
+
+export function IsRecording(): $CancellablePromise<boolean> {
+    return $Call.ByID(2249416628);
+}
+
+export function OnTrayClick(): $CancellablePromise<void> {
+    return $Call.ByID(852014744);
+}
+
 export function SetApplication(app: application$0.App | null): $CancellablePromise<void> {
     return $Call.ByID(4121261467, app);
+}
+
+export function SetMenuItems(start: application$0.MenuItem | null, stop: application$0.MenuItem | null, cancel: application$0.MenuItem | null): $CancellablePromise<void> {
+    return $Call.ByID(2433934512, start, stop, cancel);
+}
+
+export function SetSystemTray(tray: application$0.SystemTray | null): $CancellablePromise<void> {
+    return $Call.ByID(2995039438, tray);
+}
+
+export function SetWindow(window: application$0.WebviewWindow | null): $CancellablePromise<void> {
+    return $Call.ByID(3654517795, window);
+}
+
+export function ShowWindow(): $CancellablePromise<void> {
+    return $Call.ByID(31117496);
 }
 
 /**

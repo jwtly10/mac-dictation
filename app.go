@@ -22,7 +22,13 @@ const (
 )
 
 type App struct {
-	app         *application.App
+	app                 *application.App
+	window              *application.WebviewWindow
+	systemTray          *application.SystemTray
+	menuStartRecording  *application.MenuItem
+	menuStopRecording   *application.MenuItem
+	menuCancelRecording *application.MenuItem
+
 	recorder    *audio.Recorder
 	transcriber transcription.Provider
 }
@@ -44,6 +50,58 @@ func (a *App) SetApplication(app *application.App) {
 	a.app = app
 }
 
+func (a *App) SetWindow(window *application.WebviewWindow) {
+	a.window = window
+}
+
+func (a *App) SetSystemTray(tray *application.SystemTray) {
+	a.systemTray = tray
+}
+
+func (a *App) SetMenuItems(start, stop, cancel *application.MenuItem) {
+	a.menuStartRecording = start
+	a.menuStopRecording = stop
+	a.menuCancelRecording = cancel
+	a.updateMenuState()
+}
+
+func (a *App) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
+	return a.recorder.Init()
+}
+
+func (a *App) ServiceShutdown() error {
+	return a.recorder.Shutdown()
+}
+
+func (a *App) HideWindow() {
+	if a.window != nil {
+		a.window.Hide()
+	}
+}
+
+func (a *App) ShowWindow() {
+	if a.window != nil {
+		a.window.Show()
+		a.window.Focus()
+	}
+}
+
+func (a *App) OnTrayClick() {
+	if a.IsRecording() {
+		a.StopRecording()
+		a.ShowWindow()
+	} else {
+		if a.window != nil && a.window.IsVisible() {
+			a.window.Hide()
+		} else {
+			a.ShowWindow()
+		}
+	}
+}
+func (a *App) IsRecording() bool {
+	return a.recorder.GetStatus().IsRecording
+}
+
 // StartRecording starts recording using the preconfigured recorder.
 //
 // Emits "recording:started" once the recording thread starts.
@@ -56,6 +114,7 @@ func (a *App) StartRecording() {
 	}
 
 	a.app.Event.Emit(EventRecordingStarted)
+	a.updateTrayState(TrayIconRecording, "REC")
 
 	go a.progressLoop()
 }
@@ -79,21 +138,25 @@ func (a *App) StopRecording() {
 
 	if err != nil {
 		a.emitError(err)
+		a.updateTrayState(TrayIconDefault, "")
 		return
 	}
 
 	a.app.Event.Emit(EventTranscriptionStart)
+	a.updateTrayState(TrayIconTranscribing, "...")
 
 	go func() {
 		text, err := a.transcriber.Transcribe(audioData)
 		if err != nil {
 			a.emitError(err)
+			a.updateTrayState(TrayIconDefault, "")
 			return
 		}
 		a.app.Event.Emit(EventTranscriptionDone, TranscriptionResult{
 			Text:     text,
 			Provider: "deepgram",
 		})
+		a.updateTrayState(TrayIconDefault, "")
 	}()
 }
 
@@ -101,6 +164,28 @@ func (a *App) StopRecording() {
 func (a *App) CancelRecording() {
 	_ = a.recorder.CancelRecording()
 	a.app.Event.Emit(EventRecordingStopped)
+	a.updateTrayState(TrayIconDefault, "")
+}
+
+func (a *App) updateTrayState(icon TrayIcon, label string) {
+	if a.systemTray != nil {
+		a.systemTray.SetTemplateIcon(GetTrayIcon(icon))
+		a.systemTray.SetLabel(label)
+	}
+	a.updateMenuState()
+}
+
+func (a *App) updateMenuState() {
+	recording := a.IsRecording()
+	if a.menuStartRecording != nil {
+		a.menuStartRecording.SetEnabled(!recording)
+	}
+	if a.menuStopRecording != nil {
+		a.menuStopRecording.SetEnabled(recording)
+	}
+	if a.menuCancelRecording != nil {
+		a.menuCancelRecording.SetEnabled(recording)
+	}
 }
 
 func (a *App) progressLoop() {
@@ -114,17 +199,6 @@ func (a *App) progressLoop() {
 		}
 		a.app.Event.Emit(EventRecordingProgress, status.DurationSecs)
 	}
-}
-
-// ServiceStartup is called when the service starts (Wails v3 lifecycle).
-func (a *App) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	// Get app reference from options
-	return a.recorder.Init()
-}
-
-// ServiceShutdown is called when the service stops (Wails v3 lifecycle).
-func (a *App) ServiceShutdown() error {
-	return a.recorder.Shutdown()
 }
 
 func (a *App) emitError(err error) {

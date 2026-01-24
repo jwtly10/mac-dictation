@@ -265,6 +265,23 @@ export class KeyBindingManager {
     }
 }
 
+export class MenuItem {
+
+    /** Creates a new MenuItem instance. */
+    constructor($$source: Partial<MenuItem> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MenuItem instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MenuItem {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new MenuItem($$parsedSource as Partial<MenuItem>);
+    }
+}
+
 /**
  * MenuManager manages menu-related operations
  */
@@ -302,6 +319,23 @@ export class ScreenManager {
     }
 }
 
+export class SystemTray {
+
+    /** Creates a new SystemTray instance. */
+    constructor($$source: Partial<SystemTray> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new SystemTray instance from a string or object.
+     */
+    static createFrom($$source: any = {}): SystemTray {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new SystemTray($$parsedSource as Partial<SystemTray>);
+    }
+}
+
 /**
  * SystemTrayManager manages system tray-related operations
  */
@@ -319,6 +353,23 @@ export class SystemTrayManager {
     static createFrom($$source: any = {}): SystemTrayManager {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new SystemTrayManager($$parsedSource as Partial<SystemTrayManager>);
+    }
+}
+
+export class WebviewWindow {
+
+    /** Creates a new WebviewWindow instance. */
+    constructor($$source: Partial<WebviewWindow> = {}) {
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new WebviewWindow instance from a string or object.
+     */
+    static createFrom($$source: any = {}): WebviewWindow {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new WebviewWindow($$parsedSource as Partial<WebviewWindow>);
     }
 }
 

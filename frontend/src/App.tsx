@@ -63,6 +63,7 @@ function App() {
     const start = useCallback(() => AppService.StartRecording(), []);
     const stop = useCallback(() => AppService.StopRecording(), []);
     const cancel = useCallback(() => AppService.CancelRecording(), []);
+    const hideWindow = useCallback(() => AppService.HideWindow(), []);
     const clear = useCallback(() => {
         setTranscript('');
         setProvider('');
@@ -77,9 +78,8 @@ function App() {
     const hasContent = transcript || error;
 
     return (
-        <div className="backdrop-blur-md p-4">
-            {/* Header */}
-            <div className="drag-handle flex items-center justify-between mb-3">
+        <div className="min-h-screen bg-black/50 backdrop-blur-md p-4 drag-handle">
+            <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                     {status.dot && (
                         <div className={`w-2 h-2 rounded-full animate-pulse ${status.dot}`}/>
@@ -89,23 +89,30 @@ function App() {
                         {isRecording && ` ${formatDuration(durationSecs)}`}
                     </span>
                 </div>
-                {provider && (
-                    <span className="text-xs text-white/40">{provider}</span>
-                )}
+                <div className="flex items-center gap-2">
+                    {provider && (
+                        <span className="text-xs text-white/40">{provider}</span>
+                    )}
+                    <button
+                        onClick={hideWindow}
+                        className="no-drag w-5 h-5 flex items-center justify-center rounded hover:bg-white/10 text-white/40 hover:text-white/80 transition-colors"
+                        title="Hide window"
+                    >
+                        ✕
+                    </button>
+                </div>
             </div>
 
-            {/* Content */}
-            <div className="min-h-[60px] max-h-[100px] overflow-y-auto mb-3 text-sm">
+            <div className="no-drag min-h-[60px] max-h-[100px] overflow-y-auto mb-3 text-sm">
                 {error && <p className="text-red-400">{error}</p>}
                 {transcript && (
-                    <p className="text-white/90 leading-relaxed">{transcript}</p>
+                    <p className="text-white/90 leading-relaxed select-text">{transcript}</p>
                 )}
                 {!hasContent && !isBusy && (
                     <p className="text-white/40 text-xs">Press Record to start</p>
                 )}
             </div>
 
-            {/* Actions */}
             <div className="flex items-center justify-center gap-2">
                 {isRecording ? (
                     <>

@@ -8,9 +8,9 @@ html, body, #root {
 }
 
 .drag-handle {
-  -webkit-app-region: drag;
+  --wails-draggable: drag;
 }
 
 .no-drag {
-  -webkit-app-region: no-drag;
+  --wails-draggable: no-drag;
 }

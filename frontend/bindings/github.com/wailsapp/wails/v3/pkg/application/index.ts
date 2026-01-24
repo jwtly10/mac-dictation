@@ -10,8 +10,11 @@ export {
     EnvironmentManager,
     EventManager,
     KeyBindingManager,
+    MenuItem,
     MenuManager,
     ScreenManager,
+    SystemTray,
     SystemTrayManager,
+    WebviewWindow,
     WindowManager
 } from "./models.js";

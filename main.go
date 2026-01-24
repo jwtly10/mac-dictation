@@ -7,7 +7,6 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/icons"
 )
 
 //go:embed all:frontend/dist
@@ -35,26 +34,62 @@ func main() {
 	systemTray := app.SystemTray.New()
 
 	if runtime.GOOS == "darwin" {
-		systemTray.SetTemplateIcon(icons.SystrayMacTemplate)
+		systemTray.SetTemplateIcon(GetTrayIcon(TrayIconDefault))
 	}
 
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:  "Voice Dictation",
-		Width:  320,
-		Height: 200,
-		Hidden: true,
+		Title:         "Voice Dictation",
+		Width:         320,
+		Height:        220,
+		Hidden:        false,
+		AlwaysOnTop:   true,
+		Frameless:     true,
+		DisableResize: true,
+		URL:           "/",
 		Mac: application.MacWindow{
 			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-			InvisibleTitleBarHeight: 30,
+			TitleBar:                application.MacTitleBarHiddenInsetUnified,
+			InvisibleTitleBarHeight: 0,
 		},
-		AlwaysOnTop:   false,
-		Frameless:     true,
-		DisableResize: false,
-		URL:           "/",
 	})
 
-	systemTray.AttachWindow(window).WindowOffset(5)
+	appService.SetWindow(window)
+	appService.SetSystemTray(systemTray)
+
+	trayMenu := app.NewMenu()
+	trayMenu.Add("Show Window").OnClick(func(_ *application.Context) {
+		appService.ShowWindow()
+	})
+	trayMenu.AddSeparator()
+
+	menuStart := trayMenu.Add("Start Recording")
+	menuStart.OnClick(func(_ *application.Context) {
+		appService.StartRecording()
+		appService.ShowWindow()
+	})
+
+	menuStop := trayMenu.Add("Stop Recording")
+	menuStop.OnClick(func(_ *application.Context) {
+		appService.StopRecording()
+		appService.ShowWindow()
+	})
+
+	menuCancel := trayMenu.Add("Cancel Recording")
+	menuCancel.OnClick(func(_ *application.Context) {
+		appService.CancelRecording()
+	})
+
+	trayMenu.AddSeparator()
+	trayMenu.Add("Quit").OnClick(func(_ *application.Context) {
+		app.Quit()
+	})
+
+	appService.SetMenuItems(menuStart, menuStop, menuCancel)
+	systemTray.SetMenu(trayMenu)
+
+	systemTray.OnClick(func() {
+		appService.OnTrayClick()
+	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()
