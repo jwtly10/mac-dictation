@@ -21,6 +21,13 @@ const (
 	EventError              = "error"
 )
 
+const (
+	// MaxTranscriptionBytes limits recordings automatically transcribed to 7 minutes
+	//
+	// TODO: We should consolidate all the sampling behaviour as we have this across deepgram/audio impls
+	MaxTranscriptionBytes = 7 * 60 * audio.BytesPerSecond
+)
+
 type App struct {
 	app                 *application.App
 	window              *application.WebviewWindow
@@ -138,6 +145,12 @@ func (a *App) StopRecording() {
 
 	if err != nil {
 		a.emitError(err)
+		a.updateTrayState(TrayIconDefault, "")
+		return
+	}
+
+	if len(audioData) > MaxTranscriptionBytes {
+		a.emitError(fmt.Errorf("recording too long for transcription (max %d minutes)", MaxTranscriptionBytes/audio.BytesPerSecond/60))
 		a.updateTrayState(TrayIconDefault, "")
 		return
 	}

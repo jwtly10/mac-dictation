@@ -17,6 +17,12 @@ type Recorder struct {
 	device         *malgo.Device
 }
 
+const (
+	SampleRate     = 16000
+	BytesPerSample = 2
+	BytesPerSecond = SampleRate * BytesPerSample
+)
+
 func NewRecorder() *Recorder {
 	return &Recorder{}
 }
@@ -49,7 +55,7 @@ func (r *Recorder) StartRecording() error {
 	deviceConfig := malgo.DefaultDeviceConfig(malgo.Capture)
 	deviceConfig.Capture.Format = malgo.FormatS16
 	deviceConfig.Capture.Channels = 1
-	deviceConfig.SampleRate = 16000
+	deviceConfig.SampleRate = SampleRate
 	deviceConfig.Alsa.NoMMap = 1
 
 	onRecvFrames := func(pOutputSample, pInputSamples []byte, framecount uint32) {
