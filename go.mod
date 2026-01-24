@@ -1,8 +1,12 @@
-module changeme
+module mac-dictation
 
 go 1.25
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha.62
+require (
+	github.com/gen2brain/malgo v0.11.23
+	github.com/joho/godotenv v1.5.1
+	github.com/wailsapp/wails/v3 v3.0.0-alpha.62
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect

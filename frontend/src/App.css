@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+html, body, #root {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+.drag-handle {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}

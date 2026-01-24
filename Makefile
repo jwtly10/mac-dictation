@@ -1,11 +1,12 @@
 .PHONY: all run check test build clean dev
 
-all: check run
+all: run
 
 run:
 	wails3 dev
 
-dev: run
+bind:
+	wails3 generate bindings
 
 check:
 	go build -o /dev/null .

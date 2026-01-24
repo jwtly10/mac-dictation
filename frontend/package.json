@@ -1,5 +1,5 @@
 {
-  "name": "react-ts-latest",
+  "name": "mac-dicatation",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,9 +15,12 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
+    "daisyui": "^5.0.0",
+    "tailwindcss": "^4.0.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
   }
