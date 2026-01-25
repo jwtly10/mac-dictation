@@ -182,7 +182,10 @@ func (a *App) StopRecording() {
 
 	a.app.Event.Emit(EventTranscriptionStart)
 	a.updateTrayState(TrayIconTranscribing, "...")
+	a.transcribeInBackground(audioData, durationSecs)
+}
 
+func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 	go func() {
 		start := time.Now()
 		text, err := a.transcriber.Transcribe(audioData)
@@ -203,27 +206,15 @@ func (a *App) StopRecording() {
 		isNewThread := false
 
 		if a.activeThreadID == nil {
-			titleText := cleanedText
 			if cleanedText == "" {
-				titleText = text
+				cleanedText = text
 			}
-			title, err := a.openAi.Prompt(prompts.TitleGenerationPrompt, titleText)
+			thread, err = a.createThread(text)
 			if err != nil {
-				slog.Error("failed to generate title", "error", err)
-			}
-			slog.Info("generated title", "title", title)
-			if title == "" {
-				title = "Untitled"
-			}
-
-			thread = &storage.Thread{Name: title}
-			if err := a.threads.Persist(thread); err != nil {
-				slog.Error("failed to create thread", "error", err)
 				a.emitError(err)
 				a.updateTrayState(TrayIconDefault, "")
 				return
 			}
-			a.activeThreadID = thread.ID
 			isNewThread = true
 		} else {
 			thread, err = a.threads.Lookup(*a.activeThreadID)
@@ -262,6 +253,24 @@ func (a *App) StopRecording() {
 		})
 		a.updateTrayState(TrayIconDefault, "")
 	}()
+}
+
+func (a *App) createThread(text string) (*storage.Thread, error) {
+	title, err := a.openAi.Prompt(prompts.TitleGenerationPrompt, text)
+	if err != nil {
+		slog.Error("failed to generate title", "error", err)
+	}
+	slog.Info("generated title", "title", title)
+	if title == "" {
+		title = "Untitled"
+	}
+	thread := &storage.Thread{Name: title}
+	if err := a.threads.Persist(thread); err != nil {
+		slog.Error("failed to persist thread", "error", err)
+		return nil, err
+	}
+	a.activeThreadID = thread.ID
+	return thread, nil
 }
 
 // CancelRecording cancels recording in progress and emits EventRecordingStopped.
