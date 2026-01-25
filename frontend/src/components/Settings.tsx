@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
 import {LuArrowLeft, LuCheck, LuEye, LuEyeOff, LuLoader} from 'react-icons/lu';
 import {App as AppService} from '../../bindings/mac-dictation';
+import {useAlerts} from '../contexts/AlertContext';
 
 interface Props {
     onBack: () => void;
@@ -71,6 +72,7 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
     const [savingOpenai, setSavingOpenai] = useState(false);
     const [savedDeepgram, setSavedDeepgram] = useState(false);
     const [savedOpenai, setSavedOpenai] = useState(false);
+    const {addAlert} = useAlerts();
 
     const keysConfigured = deepgramKey.trim() !== '' && openaiKey.trim() !== '';
 
@@ -84,13 +86,13 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
                 setDeepgramKey(dg);
                 setOpenaiKey(oai);
             } catch (err) {
-                console.error('Failed to load settings:', err);
+                addAlert('error', `Failed to load settings: ${err}`);
             } finally {
                 setLoading(false);
             }
         };
         loadSettings();
-    }, []);
+    }, [addAlert]);
 
     const saveDeepgramKey = useCallback(async () => {
         setSavingDeepgram(true);
@@ -101,11 +103,11 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
             setTimeout(() => setSavedDeepgram(false), 2000);
             onKeysUpdated?.();
         } catch (err) {
-            console.error('Failed to save Deepgram key:', err);
+            addAlert('error', `Failed to save Deepgram key: ${err}`);
         } finally {
             setSavingDeepgram(false);
         }
-    }, [deepgramKey, onKeysUpdated]);
+    }, [deepgramKey, onKeysUpdated, addAlert]);
 
     const saveOpenaiKey = useCallback(async () => {
         setSavingOpenai(true);
@@ -116,11 +118,11 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
             setTimeout(() => setSavedOpenai(false), 2000);
             onKeysUpdated?.();
         } catch (err) {
-            console.error('Failed to save OpenAI key:', err);
+            addAlert('error', `Failed to save OpenAI key: ${err}`);
         } finally {
             setSavingOpenai(false);
         }
-    }, [openaiKey, onKeysUpdated]);
+    }, [openaiKey, onKeysUpdated, addAlert]);
 
     if (loading) {
         return (

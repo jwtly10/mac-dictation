@@ -7,3 +7,4 @@ export {ChatView} from './ChatView';
 export {TitleBar} from './TitleBar';
 export {ThreadHeader} from './ThreadHeader';
 export {Settings} from './Settings';
+export {AlertToast} from './AlertToast';

@@ -2,7 +2,9 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {Events} from '@wailsio/runtime';
 import {App as AppService} from '../../bindings/mac-dictation';
 import {config} from '../config';
-import type {RecordingState, TranscriptionCompletedEvent} from '../types';
+import type {TranscriptionCompletedEvent} from '../types';
+
+type RecordingState = 'idle' | 'recording' | 'transcribing';
 
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
@@ -19,7 +21,6 @@ interface UseRecordingOptions {
 
 export function useRecording(options: UseRecordingOptions = {}) {
     const [state, setState] = useState<RecordingState>('idle');
-    const [error, setError] = useState<string | null>(null);
     const [durationSecs, setDurationSecs] = useState(0);
     const [copied, setCopied] = useState(false);
     const [lastTranscript, setLastTranscript] = useState('');
@@ -34,7 +35,6 @@ export function useRecording(options: UseRecordingOptions = {}) {
         const unsubs = [
             Events.On('recording:started', () => {
                 setState('recording');
-                setError(null);
                 setDurationSecs(0);
                 setCopied(false);
             }),
@@ -63,10 +63,6 @@ export function useRecording(options: UseRecordingOptions = {}) {
 
                 optionsRef.current.onTranscriptionComplete?.(data);
             }),
-            Events.On('error', (ev: Events.WailsEvent) => {
-                setError(ev.data as string);
-                setState('error');
-            }),
         ];
 
         return () => {
@@ -92,7 +88,6 @@ export function useRecording(options: UseRecordingOptions = {}) {
 
     return {
         state,
-        error,
         durationSecs,
         copied,
         lastTranscript,

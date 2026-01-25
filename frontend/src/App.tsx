@@ -4,16 +4,30 @@ import {App as AppService} from '../bindings/mac-dictation';
 import {useRecording} from './hooks/useRecording';
 import {useThreads} from './hooks/useThreads';
 import {useMessages} from './hooks/useMessages';
-import {Sidebar, ChatView, TitleBar, ThreadHeader, Settings} from './components';
+import {Sidebar, ChatView, TitleBar, ThreadHeader, Settings, AlertToast} from './components';
+import {AlertProvider, useAlerts} from './contexts/AlertContext';
 import type {TranscriptionCompletedEvent} from './types';
 
 type View = 'main' | 'settings';
 
-function App() {
+function useErrorListener() {
+    const {addAlert} = useAlerts();
+
+    useEffect(() => {
+        const unsub = Events.On('error', (ev: Events.WailsEvent) => {
+            addAlert('error', ev.data as string);
+        });
+        return () => unsub();
+    }, [addAlert]);
+}
+
+function AppContent() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(224);
     const [currentView, setCurrentView] = useState<View>('main');
     const [apiKeysConfigured, setApiKeysConfigured] = useState(false);
+
+    useErrorListener();
 
     const threads = useThreads();
     const messages = useMessages(threads.activeThreadId);
@@ -89,6 +103,7 @@ function App() {
             <div className="h-screen flex flex-col bg-black/50 backdrop-blur-xl overflow-hidden relative">
                 <TitleBar onHide={recording.hideWindow}/>
                 <Settings onBack={handleBackFromSettings} onKeysUpdated={checkApiKeys}/>
+                <AlertToast/>
             </div>
         );
     }
@@ -132,7 +147,16 @@ function App() {
                     onCancel={recording.cancelRecording}
                 />
             </main>
+            <AlertToast/>
         </div>
+    );
+}
+
+function App() {
+    return (
+        <AlertProvider>
+            <AppContent/>
+        </AlertProvider>
     );
 }
 

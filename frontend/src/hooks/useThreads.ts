@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from 'react';
 import {App as AppService} from '../../bindings/mac-dictation';
+import {useAlerts} from '../contexts/AlertContext';
 import type {Thread} from '../types';
 
 function parseThreadDates(thread: Thread): Thread {
@@ -14,6 +15,7 @@ export function useThreads() {
     const [threads, setThreads] = useState<Thread[]>([]);
     const [activeThreadId, setActiveThreadId] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
+    const {addAlert} = useAlerts();
 
     const activeThread = threads.find(t => t.id === activeThreadId) ?? null;
 
@@ -22,12 +24,13 @@ export function useThreads() {
         try {
             const result = await AppService.GetThreads();
             setThreads(result.map(parseThreadDates));
-        } catch {
+        } catch (err) {
+            addAlert('error', `Failed to load threads: ${err}`);
             setThreads([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [addAlert]);
 
     useEffect(() => {
         fetchThreads();
@@ -59,9 +62,10 @@ export function useThreads() {
             if (activeThreadId === threadId) {
                 setActiveThreadId(null);
             }
-        } catch {
+        } catch (err) {
+            addAlert('error', `Failed to delete thread: ${err}`);
         }
-    }, [activeThreadId]);
+    }, [activeThreadId, addAlert]);
 
     const renameThread = useCallback(async (threadId: number, newName: string) => {
         try {
@@ -72,9 +76,10 @@ export function useThreads() {
                 }
                 return thread;
             }));
-        } catch {
+        } catch (err) {
+            addAlert('error', `Failed to rename thread: ${err}`);
         }
-    }, []);
+    }, [addAlert]);
 
     const setThreadPinned = useCallback(async (threadId: number, pinned: boolean) => {
         try {
@@ -85,9 +90,10 @@ export function useThreads() {
                 }
                 return thread;
             }));
-        } catch {
+        } catch (err) {
+            addAlert('error', `Failed to ${pinned ? 'pin' : 'unpin'} thread: ${err}`);
         }
-    }, []);
+    }, [addAlert]);
 
     return {
         threads,

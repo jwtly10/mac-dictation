@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useState} from 'react';
 import {App as AppService} from '../../bindings/mac-dictation';
 import {Message} from "../../bindings/mac-dictation/internal/storage";
+import {useAlerts} from '../contexts/AlertContext';
 
 function parseMessageDates(message: Message): Message {
     return {
@@ -13,21 +14,20 @@ function parseMessageDates(message: Message): Message {
 export function useMessages(threadId: number | null) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const {addAlert} = useAlerts();
 
     const fetchMessages = useCallback(async (id: number) => {
         setLoading(true);
-        setError(null);
         try {
             const result = await AppService.GetMessages(id);
             setMessages(result.map(parseMessageDates));
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load messages');
+            addAlert('error', `Failed to load messages: ${err}`);
             setMessages([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [addAlert]);
 
     useEffect(() => {
         if (threadId === null) {
@@ -48,7 +48,6 @@ export function useMessages(threadId: number | null) {
     return {
         messages,
         loading,
-        error,
         addMessage,
         clearMessages,
         refetch: threadId ? () => fetchMessages(threadId) : undefined,
