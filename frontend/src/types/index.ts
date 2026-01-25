@@ -1,22 +1,11 @@
+import {Message, Thread} from "../../bindings/mac-dictation/internal/storage";
+
+export * from "../../bindings/mac-dictation/internal/storage";
+
 export type RecordingState = 'idle' | 'recording' | 'transcribing' | 'error';
 
-export interface TranscriptionData {
-    text: string;
-    provider: string;
-}
-
-export interface Message {
-    id: string;
-    text: string;
-    provider: string;
-    timestamp: Date;
-    durationSecs: number;
-}
-
-export interface Thread {
-    id?: string;
-    name: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-    messages: Message[];
+export interface TranscriptionCompletedEvent {
+    message: Message;
+    thread: Thread | null;
+    isNewThread: boolean;
 }

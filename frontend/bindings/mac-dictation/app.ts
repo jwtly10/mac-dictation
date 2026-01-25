@@ -8,12 +8,35 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as storage$0 from "./internal/storage/models.js";
 
 /**
  * CancelRecording cancels recording in progress and emits EventRecordingStopped.
  */
 export function CancelRecording(): $CancellablePromise<void> {
     return $Call.ByID(1993463310);
+}
+
+export function DeleteMessage(id: number): $CancellablePromise<void> {
+    return $Call.ByID(4055978473, id);
+}
+
+export function DeleteThread(id: number): $CancellablePromise<void> {
+    return $Call.ByID(1186337974, id);
+}
+
+export function GetMessages(threadID: number): $CancellablePromise<storage$0.Message[]> {
+    return $Call.ByID(3832618599, threadID).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+export function GetThreads(): $CancellablePromise<storage$0.Thread[]> {
+    return $Call.ByID(972270404).then(($result: any) => {
+        return $$createType3($result);
+    });
 }
 
 export function HideWindow(): $CancellablePromise<void> {
@@ -26,6 +49,10 @@ export function IsRecording(): $CancellablePromise<boolean> {
 
 export function OnTrayClick(): $CancellablePromise<void> {
     return $Call.ByID(852014744);
+}
+
+export function RenameThread(id: number, name: string): $CancellablePromise<void> {
+    return $Call.ByID(727416435, id, name);
 }
 
 export function SetApplication(app: application$0.App | null): $CancellablePromise<void> {
@@ -71,3 +98,9 @@ export function StartRecording(): $CancellablePromise<void> {
 export function StopRecording(): $CancellablePromise<void> {
     return $Call.ByID(3372080196);
 }
+
+// Private type creation functions
+const $$createType0 = storage$0.Message.createFrom;
+const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = storage$0.Thread.createFrom;
+const $$createType3 = $Create.Array($$createType2);

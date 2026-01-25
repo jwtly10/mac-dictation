@@ -1,11 +1,12 @@
-import {useEffect, useRef, useMemo} from 'react';
+import {useEffect, useMemo, useRef} from 'react';
 import {MessageBubble} from './MessageBubble';
 import {RecordingControls} from './RecordingControls';
 import {StatusIndicator} from './StatusIndicator';
-import type {Thread, Message, RecordingState} from '../types';
+import type {Message, RecordingState} from '../types';
 
 interface Props {
-    thread: Thread | null;
+    messages: Message[];
+    loading?: boolean;
     recordingState: RecordingState;
     durationSecs: number;
     onStart: () => void;
@@ -45,11 +46,11 @@ function groupMessagesByDate(messages: Message[]): MessageGroup[] {
     let currentGroup: MessageGroup | null = null;
 
     for (const message of messages) {
-        const dateKey = formatDateKey(message.timestamp);
+        const dateKey = formatDateKey(message.createdAt);
         if (!currentGroup || currentGroup.dateKey !== dateKey) {
             currentGroup = {
                 dateKey,
-                dateLabel: formatDateLabel(message.timestamp),
+                dateLabel: formatDateLabel(message.createdAt),
                 messages: [],
             };
             groups.push(currentGroup);
@@ -61,7 +62,8 @@ function groupMessagesByDate(messages: Message[]): MessageGroup[] {
 }
 
 export function ChatView({
-                             thread,
+                             messages,
+                             loading = false,
                              recordingState,
                              durationSecs,
                              onStart,
@@ -71,15 +73,15 @@ export function ChatView({
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const messageGroups = useMemo(() => {
-        if (!thread?.messages.length) return [];
-        return groupMessagesByDate(thread.messages);
-    }, [thread?.messages]);
+        if (!messages.length) return [];
+        return groupMessagesByDate(messages);
+    }, [messages]);
 
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [thread?.messages.length]);
+    }, [messages.length]);
 
     const hasMessages = messageGroups.length > 0;
     const isRecording = recordingState === 'recording';
@@ -89,7 +91,11 @@ export function ChatView({
     return (
         <div className="flex flex-col h-full">
             <div ref={scrollRef} className="flex-1 overflow-y-auto py-2 no-drag">
-                {hasMessages ? (
+                {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-white/30 text-sm">Loading...</div>
+                    </div>
+                ) : hasMessages ? (
                     messageGroups.map((group) => (
                         <div key={group.dateKey}>
                             <div className="flex items-center gap-3 px-4 py-3">
@@ -107,7 +113,7 @@ export function ChatView({
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center px-6">
                         <div className="text-white/20 text-sm mb-1">
-                            {thread ? 'No recordings yet' : 'Start a new thread'}
+                            No recordings yet
                         </div>
                         <div className="text-white/10 text-xs">
                             Press record to begin
@@ -128,7 +134,8 @@ export function ChatView({
                         onStart={onStart}
                         onStop={onStop}
                         onCancel={onCancel}
-                        onClear={() => {}}
+                        onClear={() => {
+                        }}
                     />
                 </div>
             </div>

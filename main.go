@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log/slog"
+	"mac-dictation/internal/database"
+	"os"
 	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -13,7 +16,20 @@ import (
 var assets embed.FS
 
 func main() {
-	appService := NewApp()
+	db, err := database.Connect("dictation.db")
+	if err != nil {
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	err = database.RunMigrations(context.Background(), db)
+	if err != nil {
+		slog.Error("failed to run migrations", "error", err)
+		os.Exit(1)
+	}
+
+	appService := NewApp(db)
 
 	app := application.New(application.Options{
 		Name:        "Mac Dictation",
@@ -96,7 +112,7 @@ func main() {
 		e.Cancel()
 	})
 
-	err := app.Run()
+	err = app.Run()
 	if err != nil {
 		slog.Error("app failed to run", "error", err)
 		panic(err)

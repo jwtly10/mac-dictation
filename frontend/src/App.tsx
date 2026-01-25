@@ -1,35 +1,42 @@
 import {useState, useCallback, useMemo} from 'react';
 import {useRecording} from './hooks/useRecording';
 import {useThreads} from './hooks/useThreads';
+import {useMessages} from './hooks/useMessages';
 import {Sidebar, ChatView, TitleBar, ThreadHeader} from './components';
+import type {TranscriptionCompletedEvent} from './types';
 
 function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(224);
+
     const threads = useThreads();
+    const messages = useMessages(threads.activeThreadId);
+
+    const handleTranscriptionComplete = useCallback((event: TranscriptionCompletedEvent) => {
+        if (event.isNewThread && event.thread) {
+            threads.addThread(event.thread);
+        } else if (event.thread) {
+            threads.updateThread(event.thread);
+        }
+        messages.addMessage(event.message);
+    }, [threads, messages]);
 
     const recordingOptions = useMemo(() => ({
-        onTranscriptionComplete: threads.addMessage,
-    }), [threads.addMessage]);
+        onTranscriptionComplete: handleTranscriptionComplete,
+    }), [handleTranscriptionComplete]);
 
     const recording = useRecording(recordingOptions);
 
     const handleNewThread = useCallback(() => {
-        threads.createThread();
+        threads.selectThread(null);
+        messages.clearMessages();
         setSidebarOpen(false);
-    }, [threads]);
+    }, [threads, messages]);
 
-    const handleSelectThread = useCallback((threadId: string | null) => {
+    const handleSelectThread = useCallback((threadId: number | null) => {
         threads.selectThread(threadId);
         setSidebarOpen(false);
     }, [threads]);
-
-    const handleStartRecording = useCallback(() => {
-        if (!threads.activeThreadId) {
-            threads.createThread();
-        }
-        recording.startRecording();
-    }, [threads, recording]);
 
     const handleTitleChange = useCallback((newTitle: string) => {
         if (threads.activeThreadId) {
@@ -64,10 +71,11 @@ function App() {
 
             <main className="flex-1 min-h-0">
                 <ChatView
-                    thread={threads.activeThread}
+                    messages={messages.messages}
+                    loading={messages.loading}
                     recordingState={recording.state}
                     durationSecs={recording.durationSecs}
-                    onStart={handleStartRecording}
+                    onStart={recording.startRecording}
                     onStop={recording.stopRecording}
                     onCancel={recording.cancelRecording}
                 />

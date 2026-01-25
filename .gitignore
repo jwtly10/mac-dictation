@@ -33,3 +33,5 @@ CLAUDE.md
 PLAN.md
 
 .env
+
+*.db

@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {LuCheck, LuChevronDown, LuChevronUp, LuCopy} from 'react-icons/lu';
-import type {Message} from '../types';
+import {Message} from "../types";
 
 interface Props {
     message: Message;
@@ -36,20 +36,22 @@ export function MessageBubble({message}: Readonly<Props>) {
     const [needsExpansion, setNeedsExpansion] = useState(false);
     const textRef = useRef<HTMLDivElement>(null);
 
+    const displayText = message.text || message.originalText;
+
     useEffect(() => {
         if (textRef.current) {
             setNeedsExpansion(textRef.current.scrollHeight > MAX_COLLAPSED_HEIGHT);
         }
-    }, [message.text]);
+    }, [displayText]);
 
     const handleCopy = useCallback(async () => {
         try {
-            await navigator.clipboard.writeText(message.text);
+            await navigator.clipboard.writeText(displayText);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch {
         }
-    }, [message.text]);
+    }, [displayText]);
 
     return (
         <div className="group px-3 py-2">
@@ -68,7 +70,7 @@ export function MessageBubble({message}: Readonly<Props>) {
                             : 'none',
                     }}
                 >
-                    {message.text}
+                    {displayText}
                 </div>
 
                 {needsExpansion && (
@@ -94,9 +96,9 @@ export function MessageBubble({message}: Readonly<Props>) {
                     <div className="flex items-center gap-2 text-[10px] text-white/30">
                         <span
                             className="cursor-default"
-                            title={formatFullDateTime(message.timestamp)}
+                            title={formatFullDateTime(message.createdAt)}
                         >
-                            {formatTime(message.timestamp)}
+                            {formatTime(message.createdAt)}
                         </span>
                         <span>·</span>
                         <span>{formatDuration(message.durationSecs)}</span>

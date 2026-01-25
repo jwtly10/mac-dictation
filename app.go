@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"mac-dictation/internal/audio"
+	"mac-dictation/internal/database"
+	"mac-dictation/internal/storage"
 	"mac-dictation/internal/transcription"
 	"os"
 	"time"
@@ -39,9 +41,12 @@ type App struct {
 
 	recorder    *audio.Recorder
 	transcriber transcription.Provider
+
+	messages *storage.MessageService
+	threads  *storage.ThreadService
 }
 
-func NewApp() *App {
+func NewApp(db *database.DB) *App {
 	_ = godotenv.Load()
 
 	deepgramApiKey := os.Getenv("DEEPGRAM_API_KEY")
@@ -51,6 +56,9 @@ func NewApp() *App {
 	return &App{
 		recorder:    audio.NewRecorder(),
 		transcriber: transcription.NewDeepgramService(deepgramApiKey),
+
+		messages: storage.NewMessageService(db),
+		threads:  storage.NewThreadService(db),
 	}
 }
 
@@ -132,23 +140,33 @@ type TranscriptionResult struct {
 	Provider string `json:"provider"`
 }
 
+type TranscriptionCompletedEvent struct {
+	Message     storage.Message `json:"message"`
+	Thread      *storage.Thread `json:"thread"`
+	IsNewThread bool            `json:"isNewThread"`
+}
+
 // StopRecording stops recording and triggers transcription asynchronously.
 //
 // Emits "recording:stopped" before starting transcription.
 //
 // Emits "transcription:started" before transcription starts.
 //
-// Emits "transcription:completed" with the transcription result.
+// Emits "transcription:completed" with the transcription completed event data.
 func (a *App) StopRecording() {
 	audioData, err := a.recorder.StopRecording()
 
 	a.app.Event.Emit(EventRecordingStopped)
 
 	if err != nil {
+		slog.Error("failed to stop recording", "error", err)
 		a.emitError(err)
 		a.updateTrayState(TrayIconDefault, "")
 		return
 	}
+
+	// Persist the message and thread
+	message := storage.Message{}
 
 	if len(audioData) > MaxTranscriptionBytes {
 		a.emitError(fmt.Errorf("recording too long for transcription (max %d minutes)", MaxTranscriptionBytes/audio.BytesPerSecond/60))
@@ -179,6 +197,35 @@ func (a *App) CancelRecording() {
 	_ = a.recorder.CancelRecording()
 	a.app.Event.Emit(EventRecordingStopped)
 	a.updateTrayState(TrayIconDefault, "")
+}
+
+func (a *App) GetMessages(threadID int) ([]storage.Message, error) {
+	_, err := a.threads.Lookup(threadID)
+	if err != nil {
+		return nil, err
+	}
+	return a.messages.LookupForThread(threadID)
+}
+
+func (a *App) DeleteMessage(id int) error {
+	return a.messages.Delete(id)
+}
+
+func (a *App) GetThreads() ([]storage.Thread, error) {
+	return a.threads.LookupAll()
+}
+
+func (a *App) DeleteThread(id int) error {
+	return a.threads.Delete(id)
+}
+
+func (a *App) RenameThread(id int, name string) error {
+	thread, err := a.threads.Lookup(id)
+	if err != nil {
+		return err
+	}
+	thread.Name = name
+	return a.threads.Persist(thread)
 }
 
 func (a *App) updateTrayState(icon TrayIcon, label string) {

@@ -2,7 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {Events} from '@wailsio/runtime';
 import {App as AppService} from '../../bindings/mac-dictation';
 import {config} from '../config';
-import type {Message, RecordingState, TranscriptionData} from '../types';
+import type {RecordingState, TranscriptionCompletedEvent} from '../types';
 
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
@@ -14,7 +14,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 interface UseRecordingOptions {
-    onTranscriptionComplete?: (message: Omit<Message, 'id'>) => void;
+    onTranscriptionComplete?: (event: TranscriptionCompletedEvent) => void;
 }
 
 export function useRecording(options: UseRecordingOptions = {}) {
@@ -24,7 +24,11 @@ export function useRecording(options: UseRecordingOptions = {}) {
     const [copied, setCopied] = useState(false);
     const [lastTranscript, setLastTranscript] = useState('');
     const copyTimeoutRef = useRef<number | null>(null);
-    const recordingStartTimeRef = useRef<Date | null>(null);
+    const optionsRef = useRef(options);
+
+    useEffect(() => {
+        optionsRef.current = options;
+    }, [options]);
 
     useEffect(() => {
         const unsubs = [
@@ -33,7 +37,6 @@ export function useRecording(options: UseRecordingOptions = {}) {
                 setError(null);
                 setDurationSecs(0);
                 setCopied(false);
-                recordingStartTimeRef.current = new Date();
             }),
             Events.On('recording:progress', (ev: Events.WailsEvent) => {
                 setDurationSecs(ev.data as number);
@@ -45,25 +48,20 @@ export function useRecording(options: UseRecordingOptions = {}) {
                 setState('transcribing');
             }),
             Events.On('transcription:completed', (ev: Events.WailsEvent) => {
-                const data = ev.data as TranscriptionData;
+                const data = ev.data as TranscriptionCompletedEvent;
                 setState('idle');
-                setLastTranscript(data.text);
 
-                if (config.autoCopyOnTranscription && data.text) {
-                    copyToClipboard(data.text);
+                const text = data.message.text || data.message.originalText;
+                setLastTranscript(text);
+
+                if (config.autoCopyOnTranscription && text) {
+                    copyToClipboard(text);
                     setCopied(true);
                     if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
                     copyTimeoutRef.current = window.setTimeout(() => setCopied(false), 2000);
                 }
 
-                if (options.onTranscriptionComplete && data.text) {
-                    options.onTranscriptionComplete({
-                        text: data.text,
-                        provider: data.provider,
-                        timestamp: recordingStartTimeRef.current ?? new Date(),
-                        durationSecs: Math.floor(durationSecs),
-                    });
-                }
+                optionsRef.current.onTranscriptionComplete?.(data);
             }),
             Events.On('error', (ev: Events.WailsEvent) => {
                 setError(ev.data as string);
@@ -75,7 +73,7 @@ export function useRecording(options: UseRecordingOptions = {}) {
             unsubs.forEach(fn => fn());
             if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
         };
-    }, [durationSecs, options]);
+    }, []);
 
     const startRecording = useCallback(() => AppService.StartRecording(), []);
     const stopRecording = useCallback(() => AppService.StopRecording(), []);

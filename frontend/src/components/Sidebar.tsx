@@ -1,17 +1,17 @@
-import {useState, useMemo, useCallback, useRef, useEffect} from 'react';
-import {LuPlus, LuMessageSquare, LuTrash2, LuX, LuCheck} from 'react-icons/lu';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {LuCheck, LuMessageSquare, LuPlus, LuTrash2, LuX} from 'react-icons/lu';
 import type {Thread} from '../types';
 
 interface Props {
     threads: Thread[];
-    activeThreadId: string | null;
+    activeThreadId: number | null;
     isOpen: boolean;
     width: number;
     onWidthChange: (width: number) => void;
     onToggle: () => void;
-    onSelectThread: (threadId: string | null) => void;
+    onSelectThread: (threadId: number | null) => void;
     onNewThread: () => void;
-    onDeleteThread: (threadId: string) => void;
+    onDeleteThread: (threadId: number) => void;
 }
 
 const MIN_WIDTH = 180;
@@ -34,12 +34,18 @@ function getWeekKey(date: Date): string {
 
 function getWeekLabel(key: string): string {
     switch (key) {
-        case 'future': return 'Upcoming';
-        case 'today': return 'Today';
-        case 'yesterday': return 'Yesterday';
-        case 'this-week': return 'This Week';
-        case 'last-week': return 'Last Week';
-        case 'this-month': return 'This Month';
+        case 'future':
+            return 'Upcoming';
+        case 'today':
+            return 'Today';
+        case 'yesterday':
+            return 'Yesterday';
+        case 'this-week':
+            return 'This Week';
+        case 'last-week':
+            return 'Last Week';
+        case 'this-month':
+            return 'This Month';
         default: {
             const [year, month] = key.split('-');
             const date = new Date(parseInt(year), parseInt(month) - 1);
@@ -58,7 +64,7 @@ function groupThreadsByTime(threads: Thread[]): ThreadGroup[] {
     const groups = new Map<string, Thread[]>();
 
     for (const thread of threads) {
-        const key = getWeekKey(thread.updatedAt ?? new Date());
+        const key = getWeekKey(thread.updatedAt);
         if (!groups.has(key)) {
             groups.set(key, []);
         }
@@ -83,8 +89,7 @@ function groupThreadsByTime(threads: Thread[]): ThreadGroup[] {
         }));
 }
 
-function formatRelativeDate(date: Date | undefined): string {
-    if (!date) return '';
+function formatRelativeDate(date: Date): string {
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -169,16 +174,16 @@ function ThreadItem({thread, isActive, onSelect, onDelete}: Readonly<ThreadItemP
 }
 
 export function Sidebar({
-    threads,
-    activeThreadId,
-    isOpen,
-    width,
-    onWidthChange,
-    onToggle,
-    onSelectThread,
-    onNewThread,
-    onDeleteThread,
-}: Readonly<Props>) {
+                            threads,
+                            activeThreadId,
+                            isOpen,
+                            width,
+                            onWidthChange,
+                            onToggle,
+                            onSelectThread,
+                            onNewThread,
+                            onDeleteThread,
+                        }: Readonly<Props>) {
     const groupedThreads = useMemo(() => groupThreadsByTime(threads), [threads]);
     const isResizing = useRef(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
@@ -243,11 +248,11 @@ export function Sidebar({
                             </div>
                             {group.threads.map((thread) => (
                                 <ThreadItem
-                                    key={thread.id ?? thread.name}
+                                    key={thread.id}
                                     thread={thread}
                                     isActive={activeThreadId === thread.id}
-                                    onSelect={() => onSelectThread(thread.id ?? null)}
-                                    onDelete={() => thread.id && onDeleteThread(thread.id)}
+                                    onSelect={() => onSelectThread(thread.id)}
+                                    onDelete={() => onDeleteThread(thread.id!)}
                                 />
                             ))}
                         </div>
