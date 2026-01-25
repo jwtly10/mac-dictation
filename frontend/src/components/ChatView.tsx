@@ -112,11 +112,8 @@ export function ChatView({
                     ))
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                        <div className="text-white/20 text-sm mb-1">
-                            No recordings yet
-                        </div>
-                        <div className="text-white/10 text-xs">
-                            Press record to begin
+                        <div className="text-white/10 text-sm">
+                            Press record to begin with a new Thread
                         </div>
                     </div>
                 )}

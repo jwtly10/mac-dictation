@@ -6,7 +6,7 @@ run:
 	wails3 dev
 
 bind:
-	wails3 generate bindings
+	wails3 generate bindings -ts
 
 check:
 	go build -o /dev/null .

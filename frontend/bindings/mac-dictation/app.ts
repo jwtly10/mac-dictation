@@ -55,6 +55,13 @@ export function RenameThread(id: number, name: string): $CancellablePromise<void
     return $Call.ByID(727416435, id, name);
 }
 
+/**
+ * SelectThread sets the active thread. Setting 0 will clear the current thread
+ */
+export function SelectThread(id: number): $CancellablePromise<void> {
+    return $Call.ByID(2901549873, id);
+}
+
 export function SetApplication(app: application$0.App | null): $CancellablePromise<void> {
     return $Call.ByID(4121261467, app);
 }
@@ -87,13 +94,14 @@ export function StartRecording(): $CancellablePromise<void> {
 }
 
 /**
- * StopRecording stops recording and triggers transcription asynchronously.
+ * StopRecording stops recording, triggers transcriptions, and then persists the message.
+ * Will use the current activeThreadID to manage creating/appended to thread
  * 
  * Emits "recording:stopped" before starting transcription.
  * 
  * Emits "transcription:started" before transcription starts.
  * 
- * Emits "transcription:completed" with the transcription result.
+ * Emits "transcription:completed" with the transcription completed event data.
  */
 export function StopRecording(): $CancellablePromise<void> {
     return $Call.ByID(3372080196);

@@ -35,6 +35,7 @@ export function useThreads() {
 
     const selectThread = useCallback((threadId: number | null) => {
         setActiveThreadId(threadId);
+        AppService.SelectThread(threadId ?? 0);
     }, []);
 
     const addThread = useCallback((thread: Thread) => {

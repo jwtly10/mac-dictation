@@ -44,6 +44,8 @@ type App struct {
 
 	messages *storage.MessageService
 	threads  *storage.ThreadService
+
+	activeThreadID *int
 }
 
 func NewApp(db *database.DB) *App {
@@ -135,18 +137,14 @@ func (a *App) StartRecording() {
 	go a.progressLoop()
 }
 
-type TranscriptionResult struct {
-	Text     string `json:"text"`
-	Provider string `json:"provider"`
-}
-
 type TranscriptionCompletedEvent struct {
 	Message     storage.Message `json:"message"`
 	Thread      *storage.Thread `json:"thread"`
 	IsNewThread bool            `json:"isNewThread"`
 }
 
-// StopRecording stops recording and triggers transcription asynchronously.
+// StopRecording stops recording, triggers transcriptions, and then persists the message.
+// Will use the current activeThreadID to manage creating/appended to thread
 //
 // Emits "recording:stopped" before starting transcription.
 //
@@ -154,6 +152,8 @@ type TranscriptionCompletedEvent struct {
 //
 // Emits "transcription:completed" with the transcription completed event data.
 func (a *App) StopRecording() {
+	durationSecs := a.recorder.GetStatus().DurationSecs
+
 	audioData, err := a.recorder.StopRecording()
 
 	a.app.Event.Emit(EventRecordingStopped)
@@ -165,9 +165,6 @@ func (a *App) StopRecording() {
 		return
 	}
 
-	// Persist the message and thread
-	message := storage.Message{}
-
 	if len(audioData) > MaxTranscriptionBytes {
 		a.emitError(fmt.Errorf("recording too long for transcription (max %d minutes)", MaxTranscriptionBytes/audio.BytesPerSecond/60))
 		a.updateTrayState(TrayIconDefault, "")
@@ -178,15 +175,56 @@ func (a *App) StopRecording() {
 	a.updateTrayState(TrayIconTranscribing, "...")
 
 	go func() {
+		start := time.Now()
 		text, err := a.transcriber.Transcribe(audioData)
 		if err != nil {
 			a.emitError(err)
 			a.updateTrayState(TrayIconDefault, "")
 			return
 		}
-		a.app.Event.Emit(EventTranscriptionDone, TranscriptionResult{
-			Text:     text,
-			Provider: "deepgram",
+		slog.Info("transcription completed", "duration", time.Since(start))
+
+		var thread *storage.Thread
+		isNewThread := false
+
+		if a.activeThreadID == nil {
+			thread = &storage.Thread{Name: "New Recording"}
+			if err := a.threads.Persist(thread); err != nil {
+				slog.Error("failed to create thread", "error", err)
+				a.emitError(err)
+				a.updateTrayState(TrayIconDefault, "")
+				return
+			}
+			a.activeThreadID = thread.ID
+			isNewThread = true
+		} else {
+			thread, err = a.threads.Lookup(*a.activeThreadID)
+			if err != nil {
+				slog.Error("failed to lookup thread", "error", err)
+				a.emitError(err)
+				a.updateTrayState(TrayIconDefault, "")
+				return
+			}
+		}
+
+		message := &storage.Message{
+			ThreadID:     *a.activeThreadID,
+			OriginalText: text,
+			Text:         text,
+			Provider:     "deepgram",
+			DurationSecs: durationSecs,
+		}
+		if err := a.messages.Persist(message); err != nil {
+			slog.Error("failed to persist message", "error", err)
+			a.emitError(err)
+			a.updateTrayState(TrayIconDefault, "")
+			return
+		}
+
+		a.app.Event.Emit(EventTranscriptionDone, TranscriptionCompletedEvent{
+			Message:     *message,
+			Thread:      thread,
+			IsNewThread: isNewThread,
 		})
 		a.updateTrayState(TrayIconDefault, "")
 	}()
@@ -226,6 +264,16 @@ func (a *App) RenameThread(id int, name string) error {
 	}
 	thread.Name = name
 	return a.threads.Persist(thread)
+}
+
+// SelectThread sets the active thread. Setting 0 will clear the current thread
+func (a *App) SelectThread(id int) {
+	slog.Info("selecting thread", "id", id)
+	if id == 0 {
+		a.activeThreadID = nil
+	} else {
+		a.activeThreadID = &id
+	}
 }
 
 func (a *App) updateTrayState(icon TrayIcon, label string) {
