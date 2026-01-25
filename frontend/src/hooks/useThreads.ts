@@ -76,6 +76,19 @@ export function useThreads() {
         }
     }, []);
 
+    const setThreadPinned = useCallback(async (threadId: number, pinned: boolean) => {
+        try {
+            await AppService.SetThreadPinned(threadId, pinned);
+            setThreads(prev => prev.map(thread => {
+                if (thread.id === threadId) {
+                    return {...thread, pinned, updatedAt: new Date()};
+                }
+                return thread;
+            }));
+        } catch {
+        }
+    }, []);
+
     return {
         threads,
         activeThread,
@@ -86,6 +99,7 @@ export function useThreads() {
         updateThread,
         deleteThread,
         renameThread,
+        setThreadPinned,
         refetch: fetchThreads,
     };
 }

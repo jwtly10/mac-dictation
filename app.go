@@ -221,6 +221,12 @@ func (a *App) StopRecording() {
 			return
 		}
 
+		if !isNewThread {
+			if err := a.threads.TouchUpdatedAt(*a.activeThreadID); err != nil {
+				slog.Error("failed to touch thread updated_at", "error", err)
+			}
+		}
+
 		a.app.Event.Emit(EventTranscriptionDone, TranscriptionCompletedEvent{
 			Message:     *message,
 			Thread:      thread,
@@ -274,6 +280,10 @@ func (a *App) SelectThread(id int) {
 	} else {
 		a.activeThreadID = &id
 	}
+}
+
+func (a *App) SetThreadPinned(id int, pinned bool) error {
+	return a.threads.SetPinned(id, pinned)
 }
 
 func (a *App) updateTrayState(icon TrayIcon, label string) {

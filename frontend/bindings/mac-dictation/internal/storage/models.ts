@@ -65,6 +65,7 @@ export class Message {
 export class Thread {
     "id": number | null;
     "name": string;
+    "pinned": boolean;
     "createdAt": time$0.Time;
     "updatedAt": time$0.Time;
     "deletedAt": time$0.Time | null;
@@ -76,6 +77,9 @@ export class Thread {
         }
         if (!("name" in $$source)) {
             this["name"] = "";
+        }
+        if (!("pinned" in $$source)) {
+            this["pinned"] = false;
         }
         if (!("createdAt" in $$source)) {
             this["createdAt"] = null;

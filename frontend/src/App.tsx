@@ -56,6 +56,7 @@ function App() {
                 onSelectThread={handleSelectThread}
                 onNewThread={handleNewThread}
                 onDeleteThread={threads.deleteThread}
+                onSetThreadPinned={threads.setThreadPinned}
             />
 
             <TitleBar onHide={recording.hideWindow}/>

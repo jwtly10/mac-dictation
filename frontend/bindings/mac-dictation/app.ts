@@ -74,6 +74,10 @@ export function SetSystemTray(tray: application$0.SystemTray | null): $Cancellab
     return $Call.ByID(2995039438, tray);
 }
 
+export function SetThreadPinned(id: number, pinned: boolean): $CancellablePromise<void> {
+    return $Call.ByID(4204398061, id, pinned);
+}
+
 export function SetWindow(window: application$0.WebviewWindow | null): $CancellablePromise<void> {
     return $Call.ByID(3654517795, window);
 }

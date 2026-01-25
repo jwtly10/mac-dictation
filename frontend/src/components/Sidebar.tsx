@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {LuCheck, LuMessageSquare, LuPlus, LuTrash2, LuX} from 'react-icons/lu';
+import {LuCheck, LuMessageSquare, LuPin, LuPinOff, LuPlus, LuTrash2, LuX} from 'react-icons/lu';
 import type {Thread} from '../types';
 
 interface Props {
@@ -12,6 +12,7 @@ interface Props {
     onSelectThread: (threadId: number | null) => void;
     onNewThread: () => void;
     onDeleteThread: (threadId: number) => void;
+    onSetThreadPinned: (threadId: number, pinned: boolean) => void;
 }
 
 const MIN_WIDTH = 180;
@@ -104,9 +105,10 @@ interface ThreadItemProps {
     isActive: boolean;
     onSelect: () => void;
     onDelete: () => void;
+    onTogglePin: () => void;
 }
 
-function ThreadItem({thread, isActive, onSelect, onDelete}: Readonly<ThreadItemProps>) {
+function ThreadItem({thread, isActive, onSelect, onDelete, onTogglePin}: Readonly<ThreadItemProps>) {
     const [confirmingDelete, setConfirmingDelete] = useState(false);
 
     const handleDeleteClick = (e: React.MouseEvent) => {
@@ -123,6 +125,11 @@ function ThreadItem({thread, isActive, onSelect, onDelete}: Readonly<ThreadItemP
     const handleCancelDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         setConfirmingDelete(false);
+    };
+
+    const handlePinClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onTogglePin();
     };
 
     return (
@@ -161,13 +168,24 @@ function ThreadItem({thread, isActive, onSelect, onDelete}: Readonly<ThreadItemP
                     </button>
                 </div>
             ) : (
-                <button
-                    onClick={handleDeleteClick}
-                    className="no-drag absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white/10 text-white/40 hover:text-red-400 transition-all"
-                    title="Delete thread"
-                >
-                    <LuTrash2 size={12}/>
-                </button>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={handlePinClick}
+                        className={`no-drag p-1 rounded hover:bg-white/10 transition-all ${
+                            thread.pinned ? 'text-amber-400' : 'text-white/40 hover:text-white/60'
+                        }`}
+                        title={thread.pinned ? 'Unpin thread' : 'Pin thread'}
+                    >
+                        {thread.pinned ? <LuPinOff size={12}/> : <LuPin size={12}/>}
+                    </button>
+                    <button
+                        onClick={handleDeleteClick}
+                        className="no-drag p-1 rounded hover:bg-white/10 text-white/40 hover:text-red-400 transition-all"
+                        title="Delete thread"
+                    >
+                        <LuTrash2 size={12}/>
+                    </button>
+                </div>
             )}
         </div>
     );
@@ -183,8 +201,11 @@ export function Sidebar({
                             onSelectThread,
                             onNewThread,
                             onDeleteThread,
+                            onSetThreadPinned,
                         }: Readonly<Props>) {
-    const groupedThreads = useMemo(() => groupThreadsByTime(threads), [threads]);
+    const pinnedThreads = useMemo(() => threads.filter(t => t.pinned), [threads]);
+    const unpinnedThreads = useMemo(() => threads.filter(t => !t.pinned), [threads]);
+    const groupedThreads = useMemo(() => groupThreadsByTime(unpinnedThreads), [unpinnedThreads]);
     const isResizing = useRef(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -241,6 +262,24 @@ export function Sidebar({
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-2">
+                    {pinnedThreads.length > 0 && (
+                        <div>
+                            <div className="px-3 py-2 text-[10px] font-medium text-amber-400/60 uppercase tracking-wider flex items-center gap-1.5">
+                                <LuPin size={10}/>
+                                Pinned
+                            </div>
+                            {pinnedThreads.map((thread) => (
+                                <ThreadItem
+                                    key={thread.id}
+                                    thread={thread}
+                                    isActive={activeThreadId === thread.id}
+                                    onSelect={() => onSelectThread(thread.id)}
+                                    onDelete={() => onDeleteThread(thread.id!)}
+                                    onTogglePin={() => onSetThreadPinned(thread.id!, false)}
+                                />
+                            ))}
+                        </div>
+                    )}
                     {groupedThreads.map((group) => (
                         <div key={group.key}>
                             <div className="px-3 py-2 text-[10px] font-medium text-white/30 uppercase tracking-wider">
@@ -253,6 +292,7 @@ export function Sidebar({
                                     isActive={activeThreadId === thread.id}
                                     onSelect={() => onSelectThread(thread.id)}
                                     onDelete={() => onDeleteThread(thread.id!)}
+                                    onTogglePin={() => onSetThreadPinned(thread.id!, true)}
                                 />
                             ))}
                         </div>
