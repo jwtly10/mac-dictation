@@ -55,8 +55,8 @@ func main() {
 
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:         "Voice Dictation",
-		Width:         520,
-		Height:        420,
+		Width:         600,
+		Height:        480,
 		Hidden:        false,
 		AlwaysOnTop:   false,
 		Frameless:     true,
