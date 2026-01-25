@@ -22,6 +22,9 @@ const (
 	EventTranscriptionStart = "transcription:started"
 	EventTranscriptionDone  = "transcription:completed"
 	EventError              = "error"
+
+	// Used for enabled/disabled tray icon labels
+	LabelEnabled = false
 )
 
 const (
@@ -107,7 +110,6 @@ func (a *App) ShowWindow() {
 func (a *App) OnTrayClick() {
 	if a.IsRecording() {
 		a.StopRecording()
-		a.ShowWindow()
 	} else {
 		if a.window != nil && a.window.IsVisible() {
 			a.window.Hide()
@@ -289,7 +291,9 @@ func (a *App) SetThreadPinned(id int, pinned bool) error {
 func (a *App) updateTrayState(icon TrayIcon, label string) {
 	if a.systemTray != nil {
 		a.systemTray.SetTemplateIcon(GetTrayIcon(icon))
-		a.systemTray.SetLabel(label)
+		if LabelEnabled {
+			a.systemTray.SetLabel(label)
+		}
 	}
 	a.updateMenuState()
 }

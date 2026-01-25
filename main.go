@@ -81,13 +81,11 @@ func main() {
 	menuStart := trayMenu.Add("Start Recording")
 	menuStart.OnClick(func(_ *application.Context) {
 		appService.StartRecording()
-		appService.ShowWindow()
 	})
 
 	menuStop := trayMenu.Add("Stop Recording")
 	menuStop.OnClick(func(_ *application.Context) {
 		appService.StopRecording()
-		appService.ShowWindow()
 	})
 
 	menuCancel := trayMenu.Add("Cancel Recording")
