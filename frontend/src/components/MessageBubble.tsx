@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {LuCheck, LuChevronDown, LuChevronUp, LuCopy} from 'react-icons/lu';
+import {LuCheck, LuChevronDown, LuChevronUp, LuCopy, LuFileText, LuSparkles} from 'react-icons/lu';
 import {Message} from "../types";
 
 interface Props {
@@ -34,9 +34,11 @@ export function MessageBubble({message}: Readonly<Props>) {
     const [copied, setCopied] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
     const [needsExpansion, setNeedsExpansion] = useState(false);
+    const [showOriginal, setShowOriginal] = useState(false);
     const textRef = useRef<HTMLDivElement>(null);
 
-    const displayText = message.text || message.originalText;
+    const hasCleanedText = message.text && message.originalText && message.text !== message.originalText;
+    const displayText = showOriginal ? message.originalText : (message.text || message.originalText);
 
     useEffect(() => {
         if (textRef.current) {
@@ -107,6 +109,17 @@ export function MessageBubble({message}: Readonly<Props>) {
                     </div>
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {hasCleanedText && (
+                            <button
+                                onClick={() => setShowOriginal(!showOriginal)}
+                                className={`no-drag p-1.5 rounded-md hover:bg-white/10 transition-colors ${
+                                    showOriginal ? 'text-white/70' : 'text-white/40 hover:text-white/70'
+                                }`}
+                                title={showOriginal ? 'Show cleaned' : 'Show original'}
+                            >
+                                {showOriginal ? <LuSparkles size={12}/> : <LuFileText size={12}/>}
+                            </button>
+                        )}
                         <button
                             onClick={handleCopy}
                             className="no-drag p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"

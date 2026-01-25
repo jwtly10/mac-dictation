@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"mac-dictation/internal/audio"
 	"mac-dictation/internal/database"
+	"mac-dictation/internal/prompts"
 	"mac-dictation/internal/storage"
 	"mac-dictation/internal/transcription"
 	"os"
@@ -44,6 +45,7 @@ type App struct {
 
 	recorder    *audio.Recorder
 	transcriber transcription.Provider
+	openAi      *transcription.OpenAiService
 
 	messages *storage.MessageService
 	threads  *storage.ThreadService
@@ -58,9 +60,14 @@ func NewApp(db *database.DB) *App {
 	if deepgramApiKey == "" {
 		slog.Warn("DEEPGRAM_API_KEY not set")
 	}
+	openAiApiKey := os.Getenv("OPENAI_API_KEY")
+	if openAiApiKey == "" {
+		slog.Warn("OPENAI_API_KEY not set")
+	}
 	return &App{
 		recorder:    audio.NewRecorder(),
 		transcriber: transcription.NewDeepgramService(deepgramApiKey),
+		openAi:      transcription.NewOpenAiService(openAiApiKey),
 
 		messages: storage.NewMessageService(db),
 		threads:  storage.NewThreadService(db),
@@ -186,11 +193,30 @@ func (a *App) StopRecording() {
 		}
 		slog.Info("transcription completed", "duration", time.Since(start))
 
+		cleanedText, err := a.openAi.Prompt(prompts.CleanUpPrompt, text)
+		if err != nil {
+			slog.Error("failed to clean up transcription", "error", err)
+		}
+		slog.Info("cleaned transcription", "text", cleanedText)
+
 		var thread *storage.Thread
 		isNewThread := false
 
 		if a.activeThreadID == nil {
-			thread = &storage.Thread{Name: "New Recording"}
+			titleText := cleanedText
+			if cleanedText == "" {
+				titleText = text
+			}
+			title, err := a.openAi.Prompt(prompts.TitleGenerationPrompt, titleText)
+			if err != nil {
+				slog.Error("failed to generate title", "error", err)
+			}
+			slog.Info("generated title", "title", title)
+			if title == "" {
+				title = "Untitled"
+			}
+
+			thread = &storage.Thread{Name: title}
 			if err := a.threads.Persist(thread); err != nil {
 				slog.Error("failed to create thread", "error", err)
 				a.emitError(err)
@@ -212,7 +238,7 @@ func (a *App) StopRecording() {
 		message := &storage.Message{
 			ThreadID:     *a.activeThreadID,
 			OriginalText: text,
-			Text:         text,
+			Text:         cleanedText,
 			Provider:     "deepgram",
 			DurationSecs: durationSecs,
 		}
