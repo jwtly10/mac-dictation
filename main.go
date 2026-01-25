@@ -66,7 +66,7 @@ func main() {
 	systemTray := app.SystemTray.New()
 
 	if runtime.GOOS == "darwin" {
-		systemTray.SetTemplateIcon(GetTrayIcon(TrayIconLogo))
+		systemTray.SetTemplateIcon(GetTrayIcon(TrayIconDefault))
 	}
 
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{

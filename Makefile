@@ -1,4 +1,4 @@
-.PHONY: all run check test build clean dev
+.PHONY: all run check test build clean dev package release
 
 all: run
 
@@ -17,6 +17,11 @@ test:
 build:
 	wails3 build
 
+package:
+	wails3 task darwin:package
+
 clean:
 	rm -rf build/bin
 	rm -rf frontend/dist
+
+release: build package
