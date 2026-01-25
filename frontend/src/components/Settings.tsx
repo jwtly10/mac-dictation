@@ -1,7 +1,59 @@
 import {useCallback, useEffect, useState} from 'react';
-import {LuArrowLeft, LuCheck, LuEye, LuEyeOff, LuLoader} from 'react-icons/lu';
+import {LuArrowLeft, LuCheck, LuEye, LuEyeOff, LuLoader, LuX} from 'react-icons/lu';
 import {App as AppService} from '../../bindings/mac-dictation';
 import {useAlerts} from '../contexts/AlertContext';
+
+type SettingType = 'secret' | 'number';
+
+interface SettingConfig {
+    key: string;
+    label: string;
+    type: SettingType;
+    placeholder?: string;
+    section: string;
+    parse: (value: string) => string | number;
+    serialize: (value: string | number) => string;
+    notifyOnChange?: boolean;
+}
+
+type SettingValue = string | number;
+
+const SETTINGS: SettingConfig[] = [
+    {
+        key: 'deepgram_api_key',
+        label: 'Deepgram API Key',
+        type: 'secret',
+        placeholder: 'Enter your Deepgram API key',
+        section: 'API Keys',
+        parse: (v) => v,
+        serialize: String,
+        notifyOnChange: true,
+    },
+    {
+        key: 'openai_api_key',
+        label: 'OpenAI API Key',
+        type: 'secret',
+        placeholder: 'Enter your OpenAI API key',
+        section: 'API Keys',
+        parse: (v) => v,
+        serialize: String,
+        notifyOnChange: true,
+    },
+    {
+        key: 'min_recording_duration',
+        label: 'Minimum Recording Duration (seconds)',
+        type: 'number',
+        placeholder: '5',
+        section: 'Recording',
+        parse: (v) => {
+            const n = Number(v);
+            return isNaN(n) ? 5 : n;
+        },
+        serialize: String,
+    },
+];
+
+const SECTIONS = [...new Set(SETTINGS.map((s) => s.section))];
 
 interface Props {
     onBack: () => void;
@@ -9,55 +61,79 @@ interface Props {
 }
 
 interface SettingInputProps {
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
+    config: SettingConfig;
+    value: SettingValue;
+    originalValue: SettingValue;
+    saving: boolean;
+    onChange: (value: SettingValue) => void;
     onSave: () => void;
-    placeholder?: string;
-    saving?: boolean;
-    saved?: boolean;
+    onReset: () => void;
 }
 
-function SettingInput({label, value, onChange, onSave, placeholder, saving, saved}: Readonly<SettingInputProps>) {
+function SettingInput({config, value, originalValue, saving, onChange, onSave, onReset}: Readonly<SettingInputProps>) {
     const [visible, setVisible] = useState(false);
+    const isSecret = config.type === 'secret';
+    const isDirty = value !== originalValue;
 
-    const handleBlur = () => {
-        onSave();
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const rawValue = e.target.value;
+        if (config.type === 'number') {
+            onChange(rawValue === '' ? '' : Number(rawValue) || 0);
+        } else {
+            onChange(rawValue);
+        }
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            onSave();
-        }
+        if (e.key === 'Enter' && isDirty) onSave();
+        if (e.key === 'Escape' && isDirty) onReset();
     };
 
     return (
         <div className="space-y-2">
-            <label className="block text-sm font-medium text-white/70">{label}</label>
+            <label className="block text-sm font-medium text-white/70">{config.label}</label>
             <div className="relative">
                 <input
-                    type={visible ? 'text' : 'password'}
+                    type={isSecret && !visible ? 'password' : config.type === 'number' ? 'number' : 'text'}
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    onBlur={handleBlur}
+                    onChange={handleChange}
                     onKeyDown={handleKeyDown}
-                    placeholder={placeholder}
-                    className="w-full px-3 py-2 pr-20 bg-white/5 border border-white/10 rounded-lg text-white/90 placeholder-white/30 focus:outline-none focus:border-white/30 text-sm font-mono"
+                    placeholder={config.placeholder}
+                    className="w-full px-3 py-2 pr-24 bg-white/5 border border-white/10 rounded-lg text-white/90 placeholder-white/30 focus:outline-none focus:border-white/30 text-sm font-mono"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {saving && (
                         <LuLoader size={14} className="text-white/40 animate-spin"/>
                     )}
-                    {saved && !saving && (
-                        <LuCheck size={14} className="text-green-400"/>
+                    {!saving && isDirty && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onSave}
+                                className="p-1 rounded hover:bg-green-500/20 text-green-400 hover:text-green-300 transition-colors"
+                                title="Save"
+                            >
+                                <LuCheck size={14}/>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onReset}
+                                className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/60 transition-colors"
+                                title="Reset"
+                            >
+                                <LuX size={14}/>
+                            </button>
+                        </>
                     )}
-                    <button
-                        type="button"
-                        onClick={() => setVisible(!visible)}
-                        className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/60 transition-colors"
-                    >
-                        {visible ? <LuEyeOff size={14}/> : <LuEye size={14}/>}
-                    </button>
+                    {isSecret && (
+                        <button
+                            type="button"
+                            onClick={() => setVisible(!visible)}
+                            className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-white/60 transition-colors"
+                        >
+                            {visible ? <LuEyeOff size={14}/> : <LuEye size={14}/>}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -65,26 +141,26 @@ function SettingInput({label, value, onChange, onSave, placeholder, saving, save
 }
 
 export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
-    const [deepgramKey, setDeepgramKey] = useState('');
-    const [openaiKey, setOpenaiKey] = useState('');
+    const [values, setValues] = useState<Record<string, SettingValue>>({});
+    const [original, setOriginal] = useState<Record<string, SettingValue>>({});
+    const [saving, setSaving] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
-    const [savingDeepgram, setSavingDeepgram] = useState(false);
-    const [savingOpenai, setSavingOpenai] = useState(false);
-    const [savedDeepgram, setSavedDeepgram] = useState(false);
-    const [savedOpenai, setSavedOpenai] = useState(false);
     const {addAlert} = useAlerts();
 
-    const keysConfigured = deepgramKey.trim() !== '' && openaiKey.trim() !== '';
+    const keysConfigured = SETTINGS
+        .filter((s) => s.notifyOnChange)
+        .every((s) => String(values[s.key] ?? '').trim() !== '');
 
     useEffect(() => {
         const loadSettings = async () => {
             try {
-                const [dg, oai] = await Promise.all([
-                    AppService.GetSetting('deepgram_api_key'),
-                    AppService.GetSetting('openai_api_key'),
-                ]);
-                setDeepgramKey(dg);
-                setOpenaiKey(oai);
+                const allSettings = await AppService.GetAllSettings();
+                const initialValues: Record<string, SettingValue> = {};
+                for (const config of SETTINGS) {
+                    initialValues[config.key] = config.parse(allSettings[config.key] ?? '');
+                }
+                setValues(initialValues);
+                setOriginal(initialValues);
             } catch (err) {
                 addAlert('error', `Failed to load settings: ${err}`);
             } finally {
@@ -94,35 +170,33 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
         loadSettings();
     }, [addAlert]);
 
-    const saveDeepgramKey = useCallback(async () => {
-        setSavingDeepgram(true);
-        setSavedDeepgram(false);
-        try {
-            await AppService.SetSetting('deepgram_api_key', deepgramKey);
-            setSavedDeepgram(true);
-            setTimeout(() => setSavedDeepgram(false), 2000);
-            onKeysUpdated?.();
-        } catch (err) {
-            addAlert('error', `Failed to save Deepgram key: ${err}`);
-        } finally {
-            setSavingDeepgram(false);
-        }
-    }, [deepgramKey, onKeysUpdated, addAlert]);
+    const updateValue = useCallback((key: string, value: SettingValue) => {
+        setValues((prev) => ({...prev, [key]: value}));
+    }, []);
 
-    const saveOpenaiKey = useCallback(async () => {
-        setSavingOpenai(true);
-        setSavedOpenai(false);
+    const resetValue = useCallback((key: string) => {
+        setValues((prev) => ({...prev, [key]: original[key]}));
+    }, [original]);
+
+    const saveSetting = useCallback(async (config: SettingConfig) => {
+        const value = values[config.key];
+        if (value === original[config.key]) return;
+
+        setSaving((prev) => ({...prev, [config.key]: true}));
+
         try {
-            await AppService.SetSetting('openai_api_key', openaiKey);
-            setSavedOpenai(true);
-            setTimeout(() => setSavedOpenai(false), 2000);
-            onKeysUpdated?.();
+            await AppService.SetSetting(config.key, config.serialize(value));
+            setOriginal((prev) => ({...prev, [config.key]: value}));
+            addAlert('success', `${config.label} saved`);
+            if (config.notifyOnChange) {
+                onKeysUpdated?.();
+            }
         } catch (err) {
-            addAlert('error', `Failed to save OpenAI key: ${err}`);
+            addAlert('error', `Failed to save ${config.label}: ${err}`);
         } finally {
-            setSavingOpenai(false);
+            setSaving((prev) => ({...prev, [config.key]: false}));
         }
-    }, [openaiKey, onKeysUpdated, addAlert]);
+    }, [values, original, onKeysUpdated, addAlert]);
 
     if (loading) {
         return (
@@ -155,35 +229,27 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
                 <h1 className="text-lg font-medium text-white/90 mb-6">Settings</h1>
 
                 <div className="space-y-6 max-w-md">
-                    <div>
-                        <h2 className="text-sm font-medium text-white/50 uppercase tracking-wider mb-4">API Keys</h2>
-                        <div className="space-y-4">
-                            <SettingInput
-                                label="Deepgram API Key"
-                                value={deepgramKey}
-                                onChange={setDeepgramKey}
-                                onSave={saveDeepgramKey}
-                                placeholder="Enter your Deepgram API key"
-                                saving={savingDeepgram}
-                                saved={savedDeepgram}
-                            />
-                            <SettingInput
-                                label="OpenAI API Key"
-                                value={openaiKey}
-                                onChange={setOpenaiKey}
-                                onSave={saveOpenaiKey}
-                                placeholder="Enter your OpenAI API key"
-                                saving={savingOpenai}
-                                saved={savedOpenai}
-                            />
+                    {SECTIONS.map((section) => (
+                        <div key={section}>
+                            <h2 className="text-sm font-medium text-white/50 uppercase tracking-wider mb-4">
+                                {section}
+                            </h2>
+                            <div className="space-y-4">
+                                {SETTINGS.filter((s) => s.section === section).map((config) => (
+                                    <SettingInput
+                                        key={config.key}
+                                        config={config}
+                                        value={values[config.key]}
+                                        originalValue={original[config.key]}
+                                        saving={saving[config.key] ?? false}
+                                        onChange={(value) => updateValue(config.key, value)}
+                                        onSave={() => saveSetting(config)}
+                                        onReset={() => resetValue(config.key)}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-white/10">
-                        <p className="text-xs text-white/40">
-                            API keys are stored locally in your database and are never sent anywhere except to their respective services.
-                        </p>
-                    </div>
+                    ))}
                 </div>
             </div>
         </div>

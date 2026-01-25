@@ -9,6 +9,7 @@ import (
 	"mac-dictation/internal/prompts"
 	"mac-dictation/internal/storage"
 	"mac-dictation/internal/transcription"
+	"strconv"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -34,8 +35,9 @@ const (
 )
 
 const (
-	SettingDeepgramAPIKey = "deepgram_api_key"
-	SettingOpenAIAPIKey   = "openai_api_key"
+	SettingDeepgramAPIKey       = "deepgram_api_key"
+	SettingOpenAIAPIKey         = "openai_api_key"
+	SettingMinRecordingDuration = "min_recording_duration"
 )
 
 type App struct {
@@ -136,7 +138,7 @@ func (a *App) IsRecording() bool {
 // Emits "recording:progress" periodically.
 func (a *App) StartRecording() {
 	if err := a.recorder.StartRecording(); err != nil {
-		a.emitError(err)
+		a.emitError("Error starting recording", err)
 		return
 	}
 
@@ -162,27 +164,45 @@ type TranscriptionCompletedEvent struct {
 // Emits "transcription:completed" with the transcription completed event data.
 func (a *App) StopRecording() {
 	durationSecs := a.recorder.GetStatus().DurationSecs
-
 	audioData, err := a.recorder.StopRecording()
-
-	a.app.Event.Emit(EventRecordingStopped)
-
 	if err != nil {
-		slog.Error("failed to stop recording", "error", err)
-		a.emitError(err)
+		a.emitError("Error stopping recording", err)
 		a.updateTrayState(TrayIconDefault, "")
 		return
 	}
 
-	if len(audioData) > MaxTranscriptionBytes {
-		a.emitError(fmt.Errorf("recording too long for transcription (max %d minutes)", MaxTranscriptionBytes/audio.BytesPerSecond/60))
+	a.app.Event.Emit(EventRecordingStopped)
+
+	err = a.preTranscribeCheck(durationSecs, audioData)
+	if err != nil {
+		a.emitError("Invalid audio", err)
 		a.updateTrayState(TrayIconDefault, "")
 		return
 	}
 
 	a.app.Event.Emit(EventTranscriptionStart)
 	a.updateTrayState(TrayIconTranscribing, "...")
+
 	a.transcribeInBackground(audioData, durationSecs)
+}
+
+func (a *App) preTranscribeCheck(duration float64, audioData []byte) error {
+	m, err := a.settings.Get(SettingMinRecordingDuration)
+	if err != nil {
+		m = "5"
+	}
+	minDuration, err := strconv.ParseFloat(m, 64)
+	if err != nil {
+		minDuration = 5
+	}
+
+	if duration < minDuration {
+		return fmt.Errorf("recording too short (min %g seconds)", minDuration)
+	}
+	if len(audioData) > MaxTranscriptionBytes {
+		return fmt.Errorf("recording too long for transcription (max %d minutes)", MaxTranscriptionBytes/audio.BytesPerSecond/60)
+	}
+	return nil
 }
 
 func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
@@ -190,7 +210,7 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 		start := time.Now()
 		text, err := a.transcriber.Transcribe(audioData)
 		if err != nil {
-			a.emitError(err)
+			a.emitError("Error transcribing", err)
 			a.updateTrayState(TrayIconDefault, "")
 			return
 		}
@@ -198,7 +218,7 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 
 		cleanedText, err := a.openAi.Prompt(prompts.CleanUpPrompt, text)
 		if err != nil {
-			slog.Error("failed to clean up transcription", "error", err)
+			a.emitError("Error cleaning up transcription", err)
 		}
 		slog.Info("cleaned transcription", "text", cleanedText)
 
@@ -211,7 +231,7 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 			}
 			thread, err = a.createThread(text)
 			if err != nil {
-				a.emitError(err)
+				a.emitError("Error creating thread", err)
 				a.updateTrayState(TrayIconDefault, "")
 				return
 			}
@@ -219,8 +239,7 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 		} else {
 			thread, err = a.threads.Lookup(*a.activeThreadID)
 			if err != nil {
-				slog.Error("failed to lookup thread", "error", err)
-				a.emitError(err)
+				a.emitError("Failed to lookup thread", err)
 				a.updateTrayState(TrayIconDefault, "")
 				return
 			}
@@ -234,8 +253,7 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 			DurationSecs: durationSecs,
 		}
 		if err := a.messages.Persist(message); err != nil {
-			slog.Error("failed to persist message", "error", err)
-			a.emitError(err)
+			a.emitError("Failed to persist message", err)
 			a.updateTrayState(TrayIconDefault, "")
 			return
 		}
@@ -258,7 +276,7 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 func (a *App) createThread(text string) (*storage.Thread, error) {
 	title, err := a.openAi.Prompt(prompts.TitleGenerationPrompt, text)
 	if err != nil {
-		slog.Error("failed to generate title", "error", err)
+		a.emitError("Failed to generate title", err)
 	}
 	slog.Info("generated title", "title", title)
 	if title == "" {
@@ -393,6 +411,12 @@ func (a *App) progressLoop() {
 	}
 }
 
-func (a *App) emitError(err error) {
-	a.app.Event.Emit(EventError, err.Error())
+func (a *App) emitError(message string, err error) {
+	if message != "" {
+		message = message + ": " + err.Error()
+	} else {
+		message = err.Error()
+	}
+	slog.Error(message, "error", err)
+	a.app.Event.Emit(EventError, message)
 }
