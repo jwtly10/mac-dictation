@@ -35,6 +35,11 @@ const (
 	MaxTranscriptionBytes = 7 * 60 * audio.BytesPerSecond
 )
 
+const (
+	SettingDeepgramAPIKey = "deepgram_api_key"
+	SettingOpenAIAPIKey   = "openai_api_key"
+)
+
 type App struct {
 	app                 *application.App
 	window              *application.WebviewWindow
@@ -49,6 +54,7 @@ type App struct {
 
 	messages *storage.MessageService
 	threads  *storage.ThreadService
+	settings *storage.SettingsService
 
 	activeThreadID *int
 }
@@ -56,14 +62,11 @@ type App struct {
 func NewApp(db *database.DB) *App {
 	_ = godotenv.Load()
 
-	deepgramApiKey := os.Getenv("DEEPGRAM_API_KEY")
-	if deepgramApiKey == "" {
-		slog.Warn("DEEPGRAM_API_KEY not set")
-	}
-	openAiApiKey := os.Getenv("OPENAI_API_KEY")
-	if openAiApiKey == "" {
-		slog.Warn("OPENAI_API_KEY not set")
-	}
+	settingsService := storage.NewSettingsService(db)
+
+	deepgramApiKey := getSettingWithEnvFallback(settingsService, SettingDeepgramAPIKey, "DEEPGRAM_API_KEY")
+	openAiApiKey := getSettingWithEnvFallback(settingsService, SettingOpenAIAPIKey, "OPENAI_API_KEY")
+
 	return &App{
 		recorder:    audio.NewRecorder(),
 		transcriber: transcription.NewDeepgramService(deepgramApiKey),
@@ -71,7 +74,19 @@ func NewApp(db *database.DB) *App {
 
 		messages: storage.NewMessageService(db),
 		threads:  storage.NewThreadService(db),
+		settings: settingsService,
 	}
+}
+
+func getSettingWithEnvFallback(settings *storage.SettingsService, settingKey, envKey string) string {
+	value, err := settings.Get(settingKey)
+	if err != nil {
+		slog.Warn("failed to get setting", "key", settingKey, "error", err)
+	}
+	if value != "" {
+		return value
+	}
+	return os.Getenv(envKey)
 }
 
 func (a *App) SetApplication(app *application.App) {
@@ -312,6 +327,48 @@ func (a *App) SelectThread(id int) {
 
 func (a *App) SetThreadPinned(id int, pinned bool) error {
 	return a.threads.SetPinned(id, pinned)
+}
+
+func (a *App) GetSetting(key string) (string, error) {
+	return a.settings.Get(key)
+}
+
+func (a *App) SetSetting(key, value string) error {
+	if err := a.settings.Set(key, value); err != nil {
+		return err
+	}
+
+	switch key {
+	case SettingDeepgramAPIKey:
+		a.transcriber = transcription.NewDeepgramService(value)
+	case SettingOpenAIAPIKey:
+		a.openAi = transcription.NewOpenAiService(value)
+	}
+
+	return nil
+}
+
+func (a *App) GetAllSettings() (map[string]string, error) {
+	return a.settings.GetAll()
+}
+
+func (a *App) AreAPIKeysConfigured() bool {
+	deepgramKey, _ := a.settings.Get(SettingDeepgramAPIKey)
+	if deepgramKey == "" {
+		deepgramKey = os.Getenv("DEEPGRAM_API_KEY")
+	}
+
+	openaiKey, _ := a.settings.Get(SettingOpenAIAPIKey)
+	if openaiKey == "" {
+		openaiKey = os.Getenv("OPENAI_API_KEY")
+	}
+
+	return deepgramKey != "" && openaiKey != ""
+}
+
+func (a *App) ShowSettings() {
+	a.ShowWindow()
+	a.app.Event.Emit("settings:show")
 }
 
 func (a *App) updateTrayState(icon TrayIcon, label string) {

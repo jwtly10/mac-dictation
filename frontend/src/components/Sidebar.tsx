@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {LuCheck, LuMessageSquare, LuPin, LuPinOff, LuPlus, LuTrash2, LuX} from 'react-icons/lu';
+import {LuCheck, LuMessageSquare, LuPin, LuPinOff, LuPlus, LuSettings, LuTrash2, LuX} from 'react-icons/lu';
 import type {Thread} from '../types';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
     onNewThread: () => void;
     onDeleteThread: (threadId: number) => void;
     onSetThreadPinned: (threadId: number, pinned: boolean) => void;
+    onOpenSettings: () => void;
 }
 
 const MIN_WIDTH = 180;
@@ -202,6 +203,7 @@ export function Sidebar({
                             onNewThread,
                             onDeleteThread,
                             onSetThreadPinned,
+                            onOpenSettings,
                         }: Readonly<Props>) {
     const pinnedThreads = useMemo(() => threads.filter(t => t.pinned), [threads]);
     const unpinnedThreads = useMemo(() => threads.filter(t => !t.pinned), [threads]);
@@ -297,6 +299,16 @@ export function Sidebar({
                             ))}
                         </div>
                     ))}
+                </div>
+
+                <div className="shrink-0 px-2 py-2 border-t border-white/5">
+                    <button
+                        onClick={onOpenSettings}
+                        className="no-drag w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5 text-white/50 hover:text-white/70 text-sm transition-colors"
+                    >
+                        <LuSettings size={14}/>
+                        Settings
+                    </button>
                 </div>
 
                 <div

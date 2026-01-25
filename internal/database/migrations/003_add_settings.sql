@@ -1,0 +1,7 @@
+CREATE TABLE settings
+(
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

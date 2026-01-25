@@ -6,3 +6,4 @@ export {MessageBubble} from './MessageBubble';
 export {ChatView} from './ChatView';
 export {TitleBar} from './TitleBar';
 export {ThreadHeader} from './ThreadHeader';
+export {Settings} from './Settings';

@@ -3,7 +3,7 @@
 all: run
 
 run:
-	wails3 dev
+	DICTATION_DEV=true wails3 dev
 
 bind:
 	wails3 generate bindings -ts

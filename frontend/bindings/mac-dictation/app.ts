@@ -12,6 +12,10 @@ import * as application$0 from "../github.com/wailsapp/wails/v3/pkg/application/
 // @ts-ignore: Unused imports
 import * as storage$0 from "./internal/storage/models.js";
 
+export function AreAPIKeysConfigured(): $CancellablePromise<boolean> {
+    return $Call.ByID(3002748279);
+}
+
 /**
  * CancelRecording cancels recording in progress and emits EventRecordingStopped.
  */
@@ -27,15 +31,25 @@ export function DeleteThread(id: number): $CancellablePromise<void> {
     return $Call.ByID(1186337974, id);
 }
 
+export function GetAllSettings(): $CancellablePromise<{ [_: string]: string }> {
+    return $Call.ByID(1224888095).then(($result: any) => {
+        return $$createType0($result);
+    });
+}
+
 export function GetMessages(threadID: number): $CancellablePromise<storage$0.Message[]> {
     return $Call.ByID(3832618599, threadID).then(($result: any) => {
-        return $$createType1($result);
+        return $$createType2($result);
     });
+}
+
+export function GetSetting(key: string): $CancellablePromise<string> {
+    return $Call.ByID(48053349, key);
 }
 
 export function GetThreads(): $CancellablePromise<storage$0.Thread[]> {
     return $Call.ByID(972270404).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -70,6 +84,10 @@ export function SetMenuItems(start: application$0.MenuItem | null, stop: applica
     return $Call.ByID(2433934512, start, stop, cancel);
 }
 
+export function SetSetting(key: string, value: string): $CancellablePromise<void> {
+    return $Call.ByID(4214292049, key, value);
+}
+
 export function SetSystemTray(tray: application$0.SystemTray | null): $CancellablePromise<void> {
     return $Call.ByID(2995039438, tray);
 }
@@ -80,6 +98,10 @@ export function SetThreadPinned(id: number, pinned: boolean): $CancellablePromis
 
 export function SetWindow(window: application$0.WebviewWindow | null): $CancellablePromise<void> {
     return $Call.ByID(3654517795, window);
+}
+
+export function ShowSettings(): $CancellablePromise<void> {
+    return $Call.ByID(1646582409);
 }
 
 export function ShowWindow(): $CancellablePromise<void> {
@@ -112,7 +134,8 @@ export function StopRecording(): $CancellablePromise<void> {
 }
 
 // Private type creation functions
-const $$createType0 = storage$0.Message.createFrom;
-const $$createType1 = $Create.Array($$createType0);
-const $$createType2 = storage$0.Thread.createFrom;
-const $$createType3 = $Create.Array($$createType2);
+const $$createType0 = $Create.Map($Create.Any, $Create.Any);
+const $$createType1 = storage$0.Message.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = storage$0.Thread.createFrom;
+const $$createType4 = $Create.Array($$createType3);

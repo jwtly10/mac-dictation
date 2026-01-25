@@ -16,7 +16,13 @@ import (
 var assets embed.FS
 
 func main() {
-	db, err := database.Connect("dictation.db")
+	dbPath, err := database.GetDatabasePath()
+	if err != nil {
+		slog.Error("failed to get database path", "error", err)
+		os.Exit(1)
+	}
+
+	db, err := database.Connect(dbPath)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
@@ -93,6 +99,10 @@ func main() {
 		appService.CancelRecording()
 	})
 
+	trayMenu.AddSeparator()
+	trayMenu.Add("Settings...").OnClick(func(_ *application.Context) {
+		appService.ShowSettings()
+	})
 	trayMenu.AddSeparator()
 	trayMenu.Add("Quit").OnClick(func(_ *application.Context) {
 		app.Quit()

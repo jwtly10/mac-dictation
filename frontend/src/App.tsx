@@ -1,13 +1,18 @@
-import {useState, useCallback, useMemo} from 'react';
+import {useState, useCallback, useMemo, useEffect} from 'react';
+import {Events} from '@wailsio/runtime';
+import {App as AppService} from '../bindings/mac-dictation';
 import {useRecording} from './hooks/useRecording';
 import {useThreads} from './hooks/useThreads';
 import {useMessages} from './hooks/useMessages';
-import {Sidebar, ChatView, TitleBar, ThreadHeader} from './components';
+import {Sidebar, ChatView, TitleBar, ThreadHeader, Settings} from './components';
 import type {TranscriptionCompletedEvent} from './types';
+
+type View = 'main' | 'settings';
 
 function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(224);
+    const [currentView, setCurrentView] = useState<View>('main');
 
     const threads = useThreads();
     const messages = useMessages(threads.activeThreadId);
@@ -44,6 +49,47 @@ function App() {
         }
     }, [threads]);
 
+    const handleOpenSettings = useCallback(() => {
+        setCurrentView('settings');
+        setSidebarOpen(false);
+    }, []);
+
+    const handleBackFromSettings = useCallback(() => {
+        setCurrentView('main');
+    }, []);
+
+    useEffect(() => {
+        const unsub = Events.On('settings:show', () => {
+            setCurrentView('settings');
+        });
+        return () => unsub();
+    }, []);
+
+    const checkApiKeys = useCallback(async () => {
+        try {
+            const configured = await AppService.AreAPIKeysConfigured();
+            if (!configured) {
+                setCurrentView('settings');
+            }
+        } catch (err) {
+            console.error('Failed to check API keys:', err);
+            setCurrentView('settings');
+        }
+    }, []);
+
+    useEffect(() => {
+        checkApiKeys();
+    }, [checkApiKeys]);
+
+    if (currentView === 'settings') {
+        return (
+            <div className="h-screen flex flex-col bg-black/50 backdrop-blur-xl overflow-hidden relative">
+                <TitleBar onHide={recording.hideWindow}/>
+                <Settings onBack={handleBackFromSettings} onKeysUpdated={checkApiKeys}/>
+            </div>
+        );
+    }
+
     return (
         <div className="h-screen flex flex-col bg-black/50 backdrop-blur-xl overflow-hidden relative">
             <Sidebar
@@ -57,6 +103,7 @@ function App() {
                 onNewThread={handleNewThread}
                 onDeleteThread={threads.deleteThread}
                 onSetThreadPinned={threads.setThreadPinned}
+                onOpenSettings={handleOpenSettings}
             />
 
             <TitleBar onHide={recording.hideWindow}/>
