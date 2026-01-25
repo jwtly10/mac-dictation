@@ -5,6 +5,7 @@ import (
 	"embed"
 	"log/slog"
 	"mac-dictation/internal/database"
+	"mac-dictation/internal/logging"
 	"os"
 	"runtime"
 
@@ -16,6 +17,15 @@ import (
 var assets embed.FS
 
 func main() {
+	logCloser, err := logging.Setup()
+	if err != nil {
+		slog.Error("failed to setup logging", "error", err)
+		os.Exit(1)
+	}
+	if logCloser != nil {
+		defer logCloser.Close()
+	}
+
 	dbPath, err := database.GetDatabasePath()
 	if err != nil {
 		slog.Error("failed to get database path", "error", err)
@@ -56,7 +66,7 @@ func main() {
 	systemTray := app.SystemTray.New()
 
 	if runtime.GOOS == "darwin" {
-		systemTray.SetTemplateIcon(GetTrayIcon(TrayIconDefault))
+		systemTray.SetTemplateIcon(GetTrayIcon(TrayIconLogo))
 	}
 
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{

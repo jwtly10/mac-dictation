@@ -13,6 +13,7 @@ function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarWidth, setSidebarWidth] = useState(224);
     const [currentView, setCurrentView] = useState<View>('main');
+    const [apiKeysConfigured, setApiKeysConfigured] = useState(false);
 
     const threads = useThreads();
     const messages = useMessages(threads.activeThreadId);
@@ -68,11 +69,13 @@ function App() {
     const checkApiKeys = useCallback(async () => {
         try {
             const configured = await AppService.AreAPIKeysConfigured();
+            setApiKeysConfigured(configured);
             if (!configured) {
                 setCurrentView('settings');
             }
         } catch (err) {
             console.error('Failed to check API keys:', err);
+            setApiKeysConfigured(false);
             setCurrentView('settings');
         }
     }, []);
@@ -123,6 +126,7 @@ function App() {
                     loading={messages.loading}
                     recordingState={recording.state}
                     durationSecs={recording.durationSecs}
+                    recordingDisabled={!apiKeysConfigured}
                     onStart={recording.startRecording}
                     onStop={recording.stopRecording}
                     onCancel={recording.cancelRecording}

@@ -9,6 +9,7 @@ interface Props {
     loading?: boolean;
     recordingState: RecordingState;
     durationSecs: number;
+    recordingDisabled?: boolean;
     onStart: () => void;
     onStop: () => void;
     onCancel: () => void;
@@ -66,6 +67,7 @@ export function ChatView({
                              loading = false,
                              recordingState,
                              durationSecs,
+                             recordingDisabled = false,
                              onStart,
                              onStop,
                              onCancel,
@@ -128,6 +130,7 @@ export function ChatView({
                         isRecording={isRecording}
                         isTranscribing={isTranscribing}
                         hasContent={false}
+                        disabled={recordingDisabled}
                         onStart={onStart}
                         onStop={onStop}
                         onCancel={onCancel}

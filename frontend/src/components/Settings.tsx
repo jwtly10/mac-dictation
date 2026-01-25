@@ -72,7 +72,7 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
     const [savedDeepgram, setSavedDeepgram] = useState(false);
     const [savedOpenai, setSavedOpenai] = useState(false);
 
-    const canGoBack = deepgramKey.trim() !== '' && openaiKey.trim() !== '';
+    const keysConfigured = deepgramKey.trim() !== '' && openaiKey.trim() !== '';
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -135,12 +135,7 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
             <div className="px-4 py-3 border-b border-white/10">
                 <button
                     onClick={onBack}
-                    disabled={!canGoBack}
-                    className={`flex items-center gap-2 text-sm transition-colors ${
-                        canGoBack
-                            ? 'text-white/60 hover:text-white/90'
-                            : 'text-white/20 cursor-not-allowed'
-                    }`}
+                    className="flex items-center gap-2 text-sm text-white/60 hover:text-white/90 transition-colors"
                 >
                     <LuArrowLeft size={16}/>
                     Back
@@ -148,10 +143,10 @@ export function Settings({onBack, onKeysUpdated}: Readonly<Props>) {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-                {!canGoBack && (
+                {!keysConfigured && (
                     <div className="mb-6 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                         <p className="text-sm text-amber-200/80">
-                            Please configure both API keys to use the app.
+                            Configure both API keys to enable recording.
                         </p>
                     </div>
                 )}

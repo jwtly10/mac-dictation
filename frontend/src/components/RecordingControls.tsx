@@ -4,6 +4,7 @@ interface Props {
     isRecording: boolean;
     isTranscribing: boolean;
     hasContent: boolean;
+    disabled?: boolean;
     onStart: () => void;
     onStop: () => void;
     onCancel: () => void;
@@ -14,6 +15,7 @@ export function RecordingControls({
                                       isRecording,
                                       isTranscribing,
                                       hasContent,
+                                      disabled = false,
                                       onStart,
                                       onStop,
                                       onCancel,
@@ -53,7 +55,9 @@ export function RecordingControls({
         <div className="flex items-center gap-2">
             <button
                 onClick={onStart}
-                className="no-drag btn btn-sm btn-primary gap-1.5"
+                disabled={disabled}
+                className={`no-drag btn btn-sm gap-1.5 ${disabled ? 'btn-disabled' : 'btn-primary'}`}
+                title={disabled ? 'Configure API keys in Settings to enable recording' : undefined}
             >
                 <LuMic size={14}/>
                 Record

@@ -9,10 +9,8 @@ import (
 	"mac-dictation/internal/prompts"
 	"mac-dictation/internal/storage"
 	"mac-dictation/internal/transcription"
-	"os"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -60,12 +58,10 @@ type App struct {
 }
 
 func NewApp(db *database.DB) *App {
-	_ = godotenv.Load()
-
 	settingsService := storage.NewSettingsService(db)
 
-	deepgramApiKey := getSettingWithEnvFallback(settingsService, SettingDeepgramAPIKey, "DEEPGRAM_API_KEY")
-	openAiApiKey := getSettingWithEnvFallback(settingsService, SettingOpenAIAPIKey, "OPENAI_API_KEY")
+	deepgramApiKey, _ := settingsService.Get(SettingDeepgramAPIKey)
+	openAiApiKey, _ := settingsService.Get(SettingOpenAIAPIKey)
 
 	return &App{
 		recorder:    audio.NewRecorder(),
@@ -76,17 +72,6 @@ func NewApp(db *database.DB) *App {
 		threads:  storage.NewThreadService(db),
 		settings: settingsService,
 	}
-}
-
-func getSettingWithEnvFallback(settings *storage.SettingsService, settingKey, envKey string) string {
-	value, err := settings.Get(settingKey)
-	if err != nil {
-		slog.Warn("failed to get setting", "key", settingKey, "error", err)
-	}
-	if value != "" {
-		return value
-	}
-	return os.Getenv(envKey)
 }
 
 func (a *App) SetApplication(app *application.App) {
@@ -354,15 +339,7 @@ func (a *App) GetAllSettings() (map[string]string, error) {
 
 func (a *App) AreAPIKeysConfigured() bool {
 	deepgramKey, _ := a.settings.Get(SettingDeepgramAPIKey)
-	if deepgramKey == "" {
-		deepgramKey = os.Getenv("DEEPGRAM_API_KEY")
-	}
-
 	openaiKey, _ := a.settings.Get(SettingOpenAIAPIKey)
-	if openaiKey == "" {
-		openaiKey = os.Getenv("OPENAI_API_KEY")
-	}
-
 	return deepgramKey != "" && openaiKey != ""
 }
 

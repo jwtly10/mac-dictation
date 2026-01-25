@@ -15,6 +15,7 @@ const (
 	TrayIconDefault TrayIcon = iota
 	TrayIconRecording
 	TrayIconTranscribing
+	TrayIconLogo
 )
 
 var trayIcons = map[TrayIcon][]byte{}
@@ -36,6 +37,12 @@ func init() {
 		trayIcons[TrayIconTranscribing] = data
 	} else {
 		trayIcons[TrayIconTranscribing] = icons.SystrayMacTemplate
+	}
+
+	if data, err := iconAssets.ReadFile("icons/logo.png"); err == nil {
+		trayIcons[TrayIconLogo] = data
+	} else {
+		trayIcons[TrayIconLogo] = icons.SystrayMacTemplate
 	}
 }
 
