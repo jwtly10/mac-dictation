@@ -6,11 +6,11 @@
 name: "mac-dictation"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.0.1"
+version: "0.0.2"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A better dictation app"
+description: "A better dictation app for Mac"
 vendor: "jwtly10"
 homepage: "https://wails.io"
 license: "MIT"

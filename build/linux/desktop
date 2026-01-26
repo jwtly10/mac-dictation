@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Name=Dictation
-Comment=A better dictation app
+Comment=A better dictation app for Mac
 # The Exec line includes %u to pass the URL to the application
 Exec=/usr/local/bin/mac-dictation %u
 Terminal=false

@@ -7,11 +7,11 @@ version: '3'
 info:
   companyName: "jwtly10" # The name of the company
   productName: "Dictation" # The name of the application
-  productIdentifier: "com.jwtly10.dictation" # The unique product identifier
-  description: "A better dictation app" # The application description
+  productIdentifier: "com.jwtly10.mac-dictation" # The unique product identifier
+  description: "A better dictation app for Mac" # The application description
   copyright: "(c) 2026, jwtly10" # Copyright text
   comments: "" # Comments
-  version: "0.0.1" # The application version
+  version: "0.0.2" # The application version
 
 # iOS build configuration (uncomment to customise iOS project generation)
 # Note: Keys under `ios` OVERRIDE values under `info` when set.

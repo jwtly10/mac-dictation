@@ -1,12 +1,12 @@
 {
 	"fixed": {
-		"file_version": "0.0.1"
+		"file_version": "0.0.2"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.0.1",
+			"ProductVersion": "0.0.2",
 			"CompanyName": "jwtly10",
-			"FileDescription": "A better dictation app",
+			"FileDescription": "A better dictation app for Mac",
 			"LegalCopyright": "(c) 2026, jwtly10",
 			"ProductName": "Dictation",
 			"Comments": "This is a comment"
