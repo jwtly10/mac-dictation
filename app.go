@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"mac-dictation/internal/audio"
@@ -74,61 +73,6 @@ func NewApp(db *database.DB) *App {
 		threads:  storage.NewThreadService(db),
 		settings: settingsService,
 	}
-}
-
-func (a *App) SetApplication(app *application.App) {
-	a.app = app
-}
-
-func (a *App) SetWindow(window *application.WebviewWindow) {
-	a.window = window
-}
-
-func (a *App) SetSystemTray(tray *application.SystemTray) {
-	a.systemTray = tray
-}
-
-func (a *App) SetMenuItems(start, stop, cancel *application.MenuItem) {
-	a.menuStartRecording = start
-	a.menuStopRecording = stop
-	a.menuCancelRecording = cancel
-	a.updateMenuState()
-}
-
-func (a *App) ServiceStartup(_ context.Context, _ application.ServiceOptions) error {
-	return a.recorder.Init()
-}
-
-func (a *App) ServiceShutdown() error {
-	return a.recorder.Shutdown()
-}
-
-func (a *App) HideWindow() {
-	if a.window != nil {
-		a.window.Hide()
-	}
-}
-
-func (a *App) ShowWindow() {
-	if a.window != nil {
-		a.window.Show()
-		a.window.Focus()
-	}
-}
-
-func (a *App) OnTrayClick() {
-	if a.IsRecording() {
-		a.StopRecording()
-	} else {
-		if a.window != nil && a.window.IsVisible() {
-			a.window.Hide()
-		} else {
-			a.ShowWindow()
-		}
-	}
-}
-func (a *App) IsRecording() bool {
-	return a.recorder.GetStatus().IsRecording
 }
 
 // StartRecording starts recording using the preconfigured recorder.
@@ -386,7 +330,7 @@ func (a *App) updateTrayState(icon TrayIcon, label string) {
 }
 
 func (a *App) updateMenuState() {
-	recording := a.IsRecording()
+	recording := a.isRecording()
 	if a.menuStartRecording != nil {
 		a.menuStartRecording.SetEnabled(!recording)
 	}
@@ -396,6 +340,10 @@ func (a *App) updateMenuState() {
 	if a.menuCancelRecording != nil {
 		a.menuCancelRecording.SetEnabled(recording)
 	}
+}
+
+func (a *App) isRecording() bool {
+	return a.recorder.GetStatus().IsRecording
 }
 
 func (a *App) progressLoop() {
