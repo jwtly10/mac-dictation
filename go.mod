@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/gen2brain/malgo v0.11.23
+	github.com/gorilla/websocket v1.5.3
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.62
 )

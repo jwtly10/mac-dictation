@@ -16,7 +16,7 @@ function formatDuration(secs: number): string {
 
 export function StatusIndicator({state, durationSecs}: Readonly<Props>) {
     const isRecording = state === 'recording';
-    const isTranscribing = state === 'transcribing';
+    const isProcessing = state === 'processing';
     const isApproachingLimit = isRecording && durationSecs >= WARNING_THRESHOLD_SECS;
     const isOverLimit = isRecording && durationSecs >= MAX_TRANSCRIPTION_SECS;
 
@@ -24,7 +24,7 @@ export function StatusIndicator({state, durationSecs}: Readonly<Props>) {
         if (isOverLimit) return 'Limit reached';
         if (isApproachingLimit) return 'Approaching limit';
         if (isRecording) return 'Recording';
-        if (isTranscribing) return 'Transcribing';
+        if (isProcessing) return 'Processing';
         return 'Ready';
     };
 
@@ -32,7 +32,7 @@ export function StatusIndicator({state, durationSecs}: Readonly<Props>) {
         if (isOverLimit) return 'bg-red-500';
         if (isApproachingLimit) return 'bg-amber-400';
         if (isRecording) return 'bg-red-500';
-        if (isTranscribing) return 'bg-amber-400';
+        if (isProcessing) return 'bg-amber-400';
         return undefined;
     };
 

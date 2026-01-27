@@ -15,12 +15,13 @@ import (
 )
 
 const (
-	EventRecordingStarted   = "recording:started"
-	EventRecordingProgress  = "recording:progress"
-	EventRecordingStopped   = "recording:stopped"
-	EventTranscriptionStart = "transcription:started"
-	EventTranscriptionDone  = "transcription:completed"
-	EventError              = "error"
+	EventRecordingStarted        = "recording:started"
+	EventRecordingProgress       = "recording:progress"
+	EventRecordingStopped        = "recording:stopped"
+	EventTranscriptionProcessing = "transcription:processing"
+	EventTranscriptionInterim    = "transcription:interim"
+	EventTranscriptionDone       = "transcription:completed"
+	EventError                   = "error"
 
 	// Used for enabled/disabled tray icon labels
 	LabelEnabled = false
@@ -76,12 +77,27 @@ func NewApp(db *database.DB) *App {
 }
 
 // StartRecording starts recording using the preconfigured recorder.
-//
-// Emits "recording:started" once the recording thread starts.
-//
-// Emits "recording:progress" periodically.
 func (a *App) StartRecording() {
+	a.transcriber.OnResult(func(text string, isFinal bool) {
+		a.app.Event.Emit(EventTranscriptionInterim, map[string]any{
+			"text":    text,
+			"isFinal": isFinal,
+		})
+	})
+
+	if err := a.transcriber.StartStream(); err != nil {
+		a.emitError("Error starting transcriber", err)
+		return
+	}
+
+	a.recorder.SetOnChunk(func(chunk []byte) {
+		if err := a.transcriber.SendChunk(chunk); err != nil {
+			slog.Error("Error sending chunk to transcriber", "error", err)
+		}
+	})
+
 	if err := a.recorder.StartRecording(); err != nil {
+		_, _ = a.transcriber.EndStream()
 		a.emitError("Error starting recording", err)
 		return
 	}
@@ -98,17 +114,12 @@ type TranscriptionCompletedEvent struct {
 	IsNewThread bool            `json:"isNewThread"`
 }
 
-// StopRecording stops recording, triggers transcriptions, and then persists the message.
+// StopRecording stops recording, cleans up provider WS and
 // Will use the current activeThreadID to manage creating/appended to thread
-//
-// Emits "recording:stopped" before starting transcription.
-//
-// Emits "transcription:started" before transcription starts.
-//
-// Emits "transcription:completed" with the transcription completed event data.
 func (a *App) StopRecording() {
 	durationSecs := a.recorder.GetStatus().DurationSecs
-	audioData, err := a.recorder.StopRecording()
+	// TODO: use audio data for fallback transcription/backup
+	_, err := a.recorder.StopRecording()
 	if err != nil {
 		a.emitError("Error stopping recording", err)
 		a.updateTrayState(TrayIconDefault, "")
@@ -117,17 +128,24 @@ func (a *App) StopRecording() {
 
 	a.app.Event.Emit(EventRecordingStopped)
 
-	err = a.preTranscribeCheck(durationSecs, audioData)
+	text, err := a.transcriber.EndStream()
 	if err != nil {
-		a.emitError("Invalid audio", err)
+		a.emitError("Error ending transcriber", err)
 		a.updateTrayState(TrayIconDefault, "")
 		return
 	}
 
-	a.app.Event.Emit(EventTranscriptionStart)
+	a.app.Event.Emit(EventTranscriptionProcessing)
 	a.updateTrayState(TrayIconTranscribing, "...")
+	result, err := a.persistTranscription(text, durationSecs)
+	if err != nil {
+		a.emitError("Error persisting transcription", err)
+		a.updateTrayState(TrayIconDefault, "")
+		return
+	}
 
-	a.transcribeInBackground(audioData, durationSecs)
+	a.app.Event.Emit(EventTranscriptionDone, result)
+	a.updateTrayState(TrayIconDefault, "")
 }
 
 func (a *App) preTranscribeCheck(duration float64, audioData []byte) error {
@@ -149,6 +167,55 @@ func (a *App) preTranscribeCheck(duration float64, audioData []byte) error {
 	return nil
 }
 
+func (a *App) persistTranscription(text string, durationSecs float64) (*TranscriptionCompletedEvent, error) {
+	cleanedText, err := a.openAi.Prompt(prompts.CleanUpPrompt, text)
+	if err != nil {
+		a.emitError("Error cleaning up transcription", err)
+	}
+
+	var thread *storage.Thread
+	isNewThread := false
+
+	if a.activeThreadID == nil {
+		if cleanedText == "" {
+			cleanedText = text
+		}
+		thread, err = a.createThread(text)
+		if err != nil {
+			return nil, fmt.Errorf("error creating thread: %w", err)
+		}
+		isNewThread = true
+	} else {
+		thread, err = a.threads.Lookup(*a.activeThreadID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to lookup thread: %w", err)
+		}
+	}
+
+	message := &storage.Message{
+		ThreadID:     *a.activeThreadID,
+		OriginalText: text,
+		Text:         cleanedText,
+		Provider:     "deepgram",
+		DurationSecs: durationSecs,
+	}
+	if err := a.messages.Persist(message); err != nil {
+		return nil, fmt.Errorf("failed to persist message: %w", err)
+	}
+
+	if !isNewThread {
+		if err := a.threads.TouchUpdatedAt(*a.activeThreadID); err != nil {
+			slog.Error("failed to touch thread updated_at", "error", err)
+		}
+	}
+
+	return &TranscriptionCompletedEvent{
+		Message:     *message,
+		Thread:      thread,
+		IsNewThread: isNewThread,
+	}, nil
+}
+
 func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 	go func() {
 		start := time.Now()
@@ -166,54 +233,6 @@ func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
 		}
 		slog.Info("cleaned transcription", "text", cleanedText)
 
-		var thread *storage.Thread
-		isNewThread := false
-
-		if a.activeThreadID == nil {
-			if cleanedText == "" {
-				cleanedText = text
-			}
-			thread, err = a.createThread(text)
-			if err != nil {
-				a.emitError("Error creating thread", err)
-				a.updateTrayState(TrayIconDefault, "")
-				return
-			}
-			isNewThread = true
-		} else {
-			thread, err = a.threads.Lookup(*a.activeThreadID)
-			if err != nil {
-				a.emitError("Failed to lookup thread", err)
-				a.updateTrayState(TrayIconDefault, "")
-				return
-			}
-		}
-
-		message := &storage.Message{
-			ThreadID:     *a.activeThreadID,
-			OriginalText: text,
-			Text:         cleanedText,
-			Provider:     "deepgram",
-			DurationSecs: durationSecs,
-		}
-		if err := a.messages.Persist(message); err != nil {
-			a.emitError("Failed to persist message", err)
-			a.updateTrayState(TrayIconDefault, "")
-			return
-		}
-
-		if !isNewThread {
-			if err := a.threads.TouchUpdatedAt(*a.activeThreadID); err != nil {
-				slog.Error("failed to touch thread updated_at", "error", err)
-			}
-		}
-
-		a.app.Event.Emit(EventTranscriptionDone, TranscriptionCompletedEvent{
-			Message:     *message,
-			Thread:      thread,
-			IsNewThread: isNewThread,
-		})
-		a.updateTrayState(TrayIconDefault, "")
 	}()
 }
 
@@ -238,6 +257,7 @@ func (a *App) createThread(text string) (*storage.Thread, error) {
 // CancelRecording cancels recording in progress and emits EventRecordingStopped.
 func (a *App) CancelRecording() {
 	_ = a.recorder.CancelRecording()
+	_, _ = a.transcriber.EndStream()
 	a.app.Event.Emit(EventRecordingStopped)
 	a.updateTrayState(TrayIconDefault, "")
 }

@@ -16,6 +16,7 @@ type Recorder struct {
 	recordingStart time.Time
 	malgoCtx       *malgo.AllocatedContext
 	device         *malgo.Device
+	onChunk        func([]byte)
 }
 
 const (
@@ -35,6 +36,12 @@ func (r *Recorder) Init() error {
 	}
 	r.malgoCtx = malgoCtx
 	return nil
+}
+
+func (r *Recorder) SetOnChunk(onChunk func([]byte)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.onChunk = onChunk
 }
 
 func (r *Recorder) StartRecording() error {
@@ -62,7 +69,12 @@ func (r *Recorder) StartRecording() error {
 	onRecvFrames := func(pOutputSample, pInputSamples []byte, framecount uint32) {
 		r.mu.Lock()
 		r.audioBuffer = append(r.audioBuffer, pInputSamples...)
+		callback := r.onChunk
 		r.mu.Unlock()
+
+		if callback != nil {
+			callback(pInputSamples)
+		}
 	}
 
 	callbacks := malgo.DeviceCallbacks{

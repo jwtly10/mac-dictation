@@ -57,10 +57,6 @@ export function HideWindow(): $CancellablePromise<void> {
     return $Call.ByID(542966029);
 }
 
-export function IsRecording(): $CancellablePromise<boolean> {
-    return $Call.ByID(2249416628);
-}
-
 export function OnTrayClick(): $CancellablePromise<void> {
     return $Call.ByID(852014744);
 }
@@ -110,24 +106,14 @@ export function ShowWindow(): $CancellablePromise<void> {
 
 /**
  * StartRecording starts recording using the preconfigured recorder.
- * 
- * Emits "recording:started" once the recording thread starts.
- * 
- * Emits "recording:progress" periodically.
  */
 export function StartRecording(): $CancellablePromise<void> {
     return $Call.ByID(4179347122);
 }
 
 /**
- * StopRecording stops recording, triggers transcriptions, and then persists the message.
+ * StopRecording stops recording, cleans up provider WS and
  * Will use the current activeThreadID to manage creating/appended to thread
- * 
- * Emits "recording:stopped" before starting transcription.
- * 
- * Emits "transcription:started" before transcription starts.
- * 
- * Emits "transcription:completed" with the transcription completed event data.
  */
 export function StopRecording(): $CancellablePromise<void> {
     return $Call.ByID(3372080196);

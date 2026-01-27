@@ -4,7 +4,7 @@ import {App as AppService} from '../../bindings/mac-dictation';
 import {config} from '../config';
 import type {TranscriptionCompletedEvent} from '../types';
 
-type RecordingState = 'idle' | 'recording' | 'transcribing';
+type RecordingState = 'idle' | 'recording' | 'processing';
 
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
@@ -44,8 +44,8 @@ export function useRecording(options: UseRecordingOptions = {}) {
             Events.On('recording:stopped', () => {
                 setState((current) => current === 'recording' ? 'idle' : current);
             }),
-            Events.On('transcription:started', () => {
-                setState('transcribing');
+            Events.On('transcription:processing', () => {
+                setState('processing');
             }),
             Events.On('transcription:completed', (ev: Events.WailsEvent) => {
                 const data = ev.data as TranscriptionCompletedEvent;
@@ -97,7 +97,7 @@ export function useRecording(options: UseRecordingOptions = {}) {
         hideWindow,
         handleCopy,
         isRecording: state === 'recording',
-        isTranscribing: state === 'transcribing',
-        isBusy: state === 'recording' || state === 'transcribing',
+        isProcessing: state === 'processing',
+        isBusy: state === 'recording' || state === 'processing',
     };
 }

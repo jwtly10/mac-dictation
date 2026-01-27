@@ -87,7 +87,7 @@ export function ChatView({
 
     const hasMessages = messageGroups.length > 0;
     const isRecording = recordingState === 'recording';
-    const isTranscribing = recordingState === 'transcribing';
+    const isProcessing = recordingState === 'processing';
     const showStatus = recordingState !== 'idle';
 
     return (
@@ -128,7 +128,7 @@ export function ChatView({
                     )}
                     <RecordingControls
                         isRecording={isRecording}
-                        isTranscribing={isTranscribing}
+                        isProcessing={isProcessing}
                         hasContent={false}
                         disabled={recordingDisabled}
                         onStart={onStart}

@@ -2,7 +2,7 @@ import {LuMic, LuSquare, LuTrash2, LuX} from 'react-icons/lu';
 
 interface Props {
     isRecording: boolean;
-    isTranscribing: boolean;
+    isProcessing: boolean;
     hasContent: boolean;
     disabled?: boolean;
     onStart: () => void;
@@ -13,7 +13,7 @@ interface Props {
 
 export function RecordingControls({
                                       isRecording,
-                                      isTranscribing,
+                                      isProcessing,
                                       hasContent,
                                       disabled = false,
                                       onStart,
@@ -42,7 +42,7 @@ export function RecordingControls({
         );
     }
 
-    if (isTranscribing) {
+    if (isProcessing) {
         return (
             <button className="no-drag btn btn-sm btn-disabled" disabled>
                 <span className="loading loading-spinner loading-xs"/>{' '}
