@@ -10,6 +10,7 @@ interface Props {
     recordingState: RecordingState;
     durationSecs: number;
     recordingDisabled?: boolean;
+    interimTranscript?: string;
     onStart: () => void;
     onStop: () => void;
     onCancel: () => void;
@@ -68,6 +69,7 @@ export function ChatView({
                              recordingState,
                              durationSecs,
                              recordingDisabled = false,
+                             interimTranscript = '',
                              onStart,
                              onStop,
                              onCancel,
@@ -83,12 +85,13 @@ export function ChatView({
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages.length]);
+    }, [messages.length, interimTranscript]);
 
     const hasMessages = messageGroups.length > 0;
     const isRecording = recordingState === 'recording';
     const isProcessing = recordingState === 'processing';
     const showStatus = recordingState !== 'idle';
+    const showInterim = (isRecording || isProcessing) && interimTranscript;
 
     return (
         <div className="flex flex-col h-full">
@@ -98,20 +101,49 @@ export function ChatView({
                         <div className="text-white/30 text-sm">Loading...</div>
                     </div>
                 ) : hasMessages ? (
-                    messageGroups.map((group) => (
-                        <div key={group.dateKey}>
-                            <div className="flex items-center gap-3 px-4 py-3">
-                                <div className="flex-1 h-px bg-white/10"/>
-                                <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider">
-                                    {group.dateLabel}
-                                </span>
-                                <div className="flex-1 h-px bg-white/10"/>
+                    <>
+                        {messageGroups.map((group) => (
+                            <div key={group.dateKey}>
+                                <div className="flex items-center gap-3 px-4 py-3">
+                                    <div className="flex-1 h-px bg-white/10"/>
+                                    <span className="text-[10px] text-white/40 font-medium uppercase tracking-wider">
+                                        {group.dateLabel}
+                                    </span>
+                                    <div className="flex-1 h-px bg-white/10"/>
+                                </div>
+                                {group.messages.map((message) => (
+                                    <MessageBubble key={message.id} message={message}/>
+                                ))}
                             </div>
-                            {group.messages.map((message) => (
-                                <MessageBubble key={message.id} message={message}/>
-                            ))}
+                        ))}
+                        {showInterim && (
+                            <div className="px-4 py-2">
+                                <div className={`bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/50 text-sm italic transition-all ${isProcessing ? 'animate-pulse' : ''}`}>
+                                    {interimTranscript}
+                                    {isProcessing && (
+                                        <span className="inline-flex ml-1">
+                                            <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                                            <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                                            <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                ) : showInterim ? (
+                    <div className="px-4 py-2">
+                        <div className={`bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white/50 text-sm italic transition-all ${isProcessing ? 'animate-pulse' : ''}`}>
+                            {interimTranscript}
+                            {isProcessing && (
+                                <span className="inline-flex ml-1">
+                                    <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                                    <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                                    <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                                </span>
+                            )}
                         </div>
-                    ))
+                    </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center px-6">
                         <div className="text-white/10 text-sm">

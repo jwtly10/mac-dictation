@@ -142,6 +142,7 @@ function AppContent() {
                     recordingState={recording.state}
                     durationSecs={recording.durationSecs}
                     recordingDisabled={!apiKeysConfigured}
+                    interimTranscript={recording.interimTranscript}
                     onStart={recording.startRecording}
                     onStop={recording.stopRecording}
                     onCancel={recording.cancelRecording}

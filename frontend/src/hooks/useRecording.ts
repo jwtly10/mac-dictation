@@ -6,6 +6,11 @@ import type {TranscriptionCompletedEvent} from '../types';
 
 type RecordingState = 'idle' | 'recording' | 'processing';
 
+interface InterimTranscript {
+    text: string;
+    isFinal: boolean;
+}
+
 async function copyToClipboard(text: string): Promise<boolean> {
     try {
         await navigator.clipboard.writeText(text);
@@ -24,6 +29,8 @@ export function useRecording(options: UseRecordingOptions = {}) {
     const [durationSecs, setDurationSecs] = useState(0);
     const [copied, setCopied] = useState(false);
     const [lastTranscript, setLastTranscript] = useState('');
+    const [interimTranscript, setInterimTranscript] = useState('');
+    const finalizedTextRef = useRef('');
     const copyTimeoutRef = useRef<number | null>(null);
     const optionsRef = useRef(options);
 
@@ -37,12 +44,30 @@ export function useRecording(options: UseRecordingOptions = {}) {
                 setState('recording');
                 setDurationSecs(0);
                 setCopied(false);
+                setInterimTranscript('');
+                finalizedTextRef.current = '';
             }),
             Events.On('recording:progress', (ev: Events.WailsEvent) => {
                 setDurationSecs(ev.data as number);
             }),
             Events.On('recording:stopped', () => {
-                setState((current) => current === 'recording' ? 'idle' : current);
+                setState((current) => current === 'recording' ? 'processing' : current);
+            }),
+            Events.On('transcription:interim', (ev: Events.WailsEvent) => {
+                const data = ev.data as InterimTranscript;
+                if (data.isFinal) {
+                    if (finalizedTextRef.current) {
+                        finalizedTextRef.current += ' ' + data.text;
+                    } else {
+                        finalizedTextRef.current = data.text;
+                    }
+                    setInterimTranscript(finalizedTextRef.current);
+                } else {
+                    const display = finalizedTextRef.current
+                        ? finalizedTextRef.current + ' ' + data.text
+                        : data.text;
+                    setInterimTranscript(display);
+                }
             }),
             Events.On('transcription:processing', () => {
                 setState('processing');
@@ -50,6 +75,8 @@ export function useRecording(options: UseRecordingOptions = {}) {
             Events.On('transcription:completed', (ev: Events.WailsEvent) => {
                 const data = ev.data as TranscriptionCompletedEvent;
                 setState('idle');
+                setInterimTranscript('');
+                finalizedTextRef.current = '';
 
                 const text = data.message.text || data.message.originalText;
                 setLastTranscript(text);
@@ -91,6 +118,7 @@ export function useRecording(options: UseRecordingOptions = {}) {
         durationSecs,
         copied,
         lastTranscript,
+        interimTranscript,
         startRecording,
         stopRecording,
         cancelRecording,
