@@ -8,7 +8,6 @@ import (
 	"mac-dictation/internal/prompts"
 	"mac-dictation/internal/storage"
 	"mac-dictation/internal/transcription"
-	"strconv"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -21,6 +20,8 @@ const (
 	EventTranscriptionProcessing = "transcription:processing"
 	EventTranscriptionInterim    = "transcription:interim"
 	EventTranscriptionDone       = "transcription:completed"
+	EventTitleGenerated          = "thread:title-generated"
+	EventTextImproved            = "message:text-improved"
 	EventError                   = "error"
 
 	// Used for enabled/disabled tray icon labels
@@ -148,39 +149,13 @@ func (a *App) StopRecording() {
 	a.updateTrayState(TrayIconDefault, "")
 }
 
-func (a *App) preTranscribeCheck(duration float64, audioData []byte) error {
-	m, err := a.settings.Get(SettingMinRecordingDuration)
-	if err != nil {
-		m = "5"
-	}
-	minDuration, err := strconv.ParseFloat(m, 64)
-	if err != nil {
-		minDuration = 5
-	}
-
-	if duration < minDuration {
-		return fmt.Errorf("recording too short (min %g seconds)", minDuration)
-	}
-	if len(audioData) > MaxTranscriptionBytes {
-		return fmt.Errorf("recording too long for transcription (max %d minutes)", MaxTranscriptionBytes/audio.BytesPerSecond/60)
-	}
-	return nil
-}
-
 func (a *App) persistTranscription(text string, durationSecs float64) (*TranscriptionCompletedEvent, error) {
-	cleanedText, err := a.openAi.Prompt(prompts.CleanUpPrompt, text)
-	if err != nil {
-		a.emitError("Error cleaning up transcription", err)
-	}
-
 	var thread *storage.Thread
+	var err error
 	isNewThread := false
 
 	if a.activeThreadID == nil {
-		if cleanedText == "" {
-			cleanedText = text
-		}
-		thread, err = a.createThread(text)
+		thread, err = a.createThreadAsync(text)
 		if err != nil {
 			return nil, fmt.Errorf("error creating thread: %w", err)
 		}
@@ -192,10 +167,11 @@ func (a *App) persistTranscription(text string, durationSecs float64) (*Transcri
 		}
 	}
 
+	// Store only originalText - text cleanup is now opt-in via ImproveMessageText
 	message := &storage.Message{
 		ThreadID:     *a.activeThreadID,
 		OriginalText: text,
-		Text:         cleanedText,
+		Text:         "", // Empty until user requests improvement
 		Provider:     "deepgram",
 		DurationSecs: durationSecs,
 	}
@@ -216,42 +192,51 @@ func (a *App) persistTranscription(text string, durationSecs float64) (*Transcri
 	}, nil
 }
 
-func (a *App) transcribeInBackground(audioData []byte, durationSecs float64) {
-	go func() {
-		start := time.Now()
-		text, err := a.transcriber.Transcribe(audioData)
-		if err != nil {
-			a.emitError("Error transcribing", err)
-			a.updateTrayState(TrayIconDefault, "")
-			return
-		}
-		slog.Info("transcription completed", "duration", time.Since(start))
-
-		cleanedText, err := a.openAi.Prompt(prompts.CleanUpPrompt, text)
-		if err != nil {
-			a.emitError("Error cleaning up transcription", err)
-		}
-		slog.Info("cleaned transcription", "text", cleanedText)
-
-	}()
-}
-
-func (a *App) createThread(text string) (*storage.Thread, error) {
-	title, err := a.openAi.Prompt(prompts.TitleGenerationPrompt, text)
-	if err != nil {
-		a.emitError("Failed to generate title", err)
-	}
-	slog.Info("generated title", "title", title)
-	if title == "" {
-		title = "Untitled"
-	}
-	thread := &storage.Thread{Name: title}
+// createThreadAsync creates a thread with "Untitled" name and generates title in background
+func (a *App) createThreadAsync(text string) (*storage.Thread, error) {
+	thread := &storage.Thread{Name: "Untitled Chat"}
 	if err := a.threads.Persist(thread); err != nil {
 		slog.Error("failed to persist thread", "error", err)
 		return nil, err
 	}
 	a.activeThreadID = thread.ID
+
+	go a.generateTitleAsync(*thread.ID, text)
+
 	return thread, nil
+}
+
+type TitleGeneratedEvent struct {
+	ThreadID int    `json:"threadId"`
+	Title    string `json:"title"`
+}
+
+func (a *App) generateTitleAsync(threadID int, text string) {
+	title, err := a.openAi.Prompt(prompts.TitleGenerationPrompt, text)
+	if err != nil {
+		slog.Error("failed to generate title", "error", err)
+		return
+	}
+	slog.Info("generated title", "title", title, "threadID", threadID)
+	if title == "" {
+		return
+	}
+
+	thread, err := a.threads.Lookup(threadID)
+	if err != nil {
+		slog.Error("failed to lookup thread for title update", "error", err)
+		return
+	}
+	thread.Name = title
+	if err := a.threads.Persist(thread); err != nil {
+		slog.Error("failed to persist thread title", "error", err)
+		return
+	}
+
+	a.app.Event.Emit(EventTitleGenerated, TitleGeneratedEvent{
+		ThreadID: threadID,
+		Title:    title,
+	})
 }
 
 // CancelRecording cancels recording in progress and emits EventRecordingStopped.
@@ -272,6 +257,51 @@ func (a *App) GetMessages(threadID int) ([]storage.Message, error) {
 
 func (a *App) DeleteMessage(id int) error {
 	return a.messages.Delete(id)
+}
+
+type TextImprovedEvent struct {
+	MessageID    int    `json:"messageId"`
+	ImprovedText string `json:"improvedText"`
+}
+
+// ImproveMessageText improves the original text of a message using OpenAI
+//
+// Will only process improvements once, otherwise will return existing
+func (a *App) ImproveMessageText(messageID int) error {
+	message, err := a.messages.Lookup(messageID)
+	if err != nil {
+		return fmt.Errorf("message not found: %w", err)
+	}
+
+	if message.Text != "" {
+		return nil
+	}
+
+	go func() {
+		improvedText, err := a.openAi.Prompt(prompts.CleanUpPrompt, message.OriginalText)
+		if err != nil {
+			slog.Error("failed to improve text", "error", err, "messageID", messageID)
+			a.app.Event.Emit(EventError, "Failed to improve text: "+err.Error())
+			return
+		}
+
+		if improvedText == "" {
+			improvedText = message.OriginalText
+		}
+
+		message.Text = improvedText
+		if err := a.messages.Persist(message); err != nil {
+			slog.Error("failed to persist improved text", "error", err, "messageID", messageID)
+			return
+		}
+
+		a.app.Event.Emit(EventTextImproved, TextImprovedEvent{
+			MessageID:    messageID,
+			ImprovedText: improvedText,
+		})
+	}()
+
+	return nil
 }
 
 func (a *App) GetThreads() ([]storage.Thread, error) {

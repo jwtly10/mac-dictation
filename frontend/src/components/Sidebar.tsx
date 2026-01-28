@@ -5,6 +5,7 @@ import type {Thread} from '../types';
 interface Props {
     threads: Thread[];
     activeThreadId: number | null;
+    generatingTitleFor: number | null;
     isOpen: boolean;
     width: number;
     onWidthChange: (width: number) => void;
@@ -104,12 +105,13 @@ function formatRelativeDate(date: Date): string {
 interface ThreadItemProps {
     thread: Thread;
     isActive: boolean;
+    isGeneratingTitle: boolean;
     onSelect: () => void;
     onDelete: () => void;
     onTogglePin: () => void;
 }
 
-function ThreadItem({thread, isActive, onSelect, onDelete, onTogglePin}: Readonly<ThreadItemProps>) {
+function ThreadItem({thread, isActive, isGeneratingTitle, onSelect, onDelete, onTogglePin}: Readonly<ThreadItemProps>) {
     const [confirmingDelete, setConfirmingDelete] = useState(false);
 
     const handleDeleteClick = (e: React.MouseEvent) => {
@@ -145,7 +147,9 @@ function ThreadItem({thread, isActive, onSelect, onDelete, onTogglePin}: Readonl
             >
                 <LuMessageSquare size={14} className="shrink-0 opacity-50"/>
                 <div className="flex-1 min-w-0">
-                    <div className="truncate">{thread.name}</div>
+                    <div className={`truncate ${isGeneratingTitle ? 'animate-wiggle' : ''}`}>
+                        {thread.name}
+                    </div>
                     <div className="text-[10px] text-white/40">
                         {formatRelativeDate(thread.updatedAt)}
                     </div>
@@ -195,6 +199,7 @@ function ThreadItem({thread, isActive, onSelect, onDelete, onTogglePin}: Readonl
 export function Sidebar({
                             threads,
                             activeThreadId,
+                            generatingTitleFor,
                             isOpen,
                             width,
                             onWidthChange,
@@ -275,6 +280,7 @@ export function Sidebar({
                                     key={thread.id}
                                     thread={thread}
                                     isActive={activeThreadId === thread.id}
+                                    isGeneratingTitle={generatingTitleFor === thread.id}
                                     onSelect={() => onSelectThread(thread.id)}
                                     onDelete={() => onDeleteThread(thread.id!)}
                                     onTogglePin={() => onSetThreadPinned(thread.id!, false)}
@@ -292,6 +298,7 @@ export function Sidebar({
                                     key={thread.id}
                                     thread={thread}
                                     isActive={activeThreadId === thread.id}
+                                    isGeneratingTitle={generatingTitleFor === thread.id}
                                     onSelect={() => onSelectThread(thread.id)}
                                     onDelete={() => onDeleteThread(thread.id!)}
                                     onTogglePin={() => onSetThreadPinned(thread.id!, true)}

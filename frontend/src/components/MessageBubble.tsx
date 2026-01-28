@@ -1,15 +1,26 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {LuCheck, LuChevronDown, LuChevronUp, LuCopy, LuFileText, LuSparkles} from 'react-icons/lu';
-import {Message} from "../types";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+    LuCheck,
+    LuChevronDown,
+    LuChevronUp,
+    LuCopy,
+    LuFileText,
+    LuSparkles,
+} from 'react-icons/lu'
+import { App as AppService } from '../../bindings/mac-dictation'
+import { Message } from '../types'
 
 interface Props {
-    message: Message;
+    message: Message
 }
 
-const MAX_COLLAPSED_HEIGHT = 120;
+const MAX_COLLAPSED_HEIGHT = 120
 
 function formatTime(date: Date): string {
-    return date.toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'});
+    return date.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+    })
 }
 
 function formatFullDateTime(date: Date): string {
@@ -20,40 +31,67 @@ function formatFullDateTime(date: Date): string {
         year: 'numeric',
         hour: '2-digit',
         minute: '2-digit',
-    });
+    })
 }
 
 function formatDuration(secs: number): string {
-    const mins = Math.floor(secs / 60);
-    const remainingSecs = Math.floor(secs % 60);
-    if (mins === 0) return `${remainingSecs}s`;
-    return `${mins}m ${remainingSecs}s`;
+    const mins = Math.floor(secs / 60)
+    const remainingSecs = Math.floor(secs % 60)
+    if (mins === 0) return `${remainingSecs}s`
+    return `${mins}m ${remainingSecs}s`
 }
 
-export function MessageBubble({message}: Readonly<Props>) {
-    const [copied, setCopied] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [needsExpansion, setNeedsExpansion] = useState(false);
-    const [showOriginal, setShowOriginal] = useState(false);
-    const textRef = useRef<HTMLDivElement>(null);
+export function MessageBubble({ message }: Readonly<Props>) {
+    const [copied, setCopied] = useState(false)
+    const [isExpanded, setIsExpanded] = useState(false)
+    const [needsExpansion, setNeedsExpansion] = useState(false)
+    const [showImproved, setShowImproved] = useState(false)
+    const [isImproving, setIsImproving] = useState(false)
+    const textRef = useRef<HTMLDivElement>(null)
 
-    const hasCleanedText = message.text && message.originalText && message.text !== message.originalText;
-    const displayText = showOriginal ? message.originalText : (message.text || message.originalText);
+    const hasImprovedText =
+        message.text && message.text !== message.originalText
+    const displayText =
+        showImproved && hasImprovedText ? message.text : message.originalText
+
+    useEffect(() => {
+        if (hasImprovedText && isImproving) {
+            setIsImproving(false)
+            setShowImproved(true)
+        }
+    }, [hasImprovedText, isImproving])
 
     useEffect(() => {
         if (textRef.current) {
-            setNeedsExpansion(textRef.current.scrollHeight > MAX_COLLAPSED_HEIGHT);
+            setNeedsExpansion(
+                textRef.current.scrollHeight > MAX_COLLAPSED_HEIGHT
+            )
         }
-    }, [displayText]);
+    }, [displayText])
 
     const handleCopy = useCallback(async () => {
         try {
-            await navigator.clipboard.writeText(displayText);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch {
+            await navigator.clipboard.writeText(displayText)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+        } catch {}
+    }, [displayText])
+
+    const handleSparkleClick = useCallback(async () => {
+        if (isImproving) return
+
+        if (hasImprovedText) {
+            setShowImproved(!showImproved)
+        } else {
+            setIsImproving(true)
+            try {
+                await AppService.ImproveMessageText(message.id!)
+            } catch (err) {
+                console.error('Failed to improve text:', err)
+                setIsImproving(false)
+            }
         }
-    }, [displayText]);
+    }, [isImproving, hasImprovedText, showImproved, message.id])
 
     return (
         <div className="group px-3 py-2">
@@ -61,15 +99,19 @@ export function MessageBubble({message}: Readonly<Props>) {
                 <div
                     ref={textRef}
                     className={`text-sm text-white/85 leading-relaxed select-text overflow-hidden transition-all duration-200 ${
-                        !isExpanded && needsExpansion ? 'max-h-[120px]' : 'max-h-none'
+                        !isExpanded && needsExpansion
+                            ? 'max-h-[120px]'
+                            : 'max-h-none'
                     }`}
                     style={{
-                        maskImage: !isExpanded && needsExpansion
-                            ? 'linear-gradient(to bottom, black 70%, transparent 100%)'
-                            : 'none',
-                        WebkitMaskImage: !isExpanded && needsExpansion
-                            ? 'linear-gradient(to bottom, black 70%, transparent 100%)'
-                            : 'none',
+                        maskImage:
+                            !isExpanded && needsExpansion
+                                ? 'linear-gradient(to bottom, black 70%, transparent 100%)'
+                                : 'none',
+                        WebkitMaskImage:
+                            !isExpanded && needsExpansion
+                                ? 'linear-gradient(to bottom, black 70%, transparent 100%)'
+                                : 'none',
                     }}
                 >
                     {displayText}
@@ -82,12 +124,12 @@ export function MessageBubble({message}: Readonly<Props>) {
                     >
                         {isExpanded ? (
                             <>
-                                <LuChevronUp size={12}/>
+                                <LuChevronUp size={12} />
                                 Show less
                             </>
                         ) : (
                             <>
-                                <LuChevronDown size={12}/>
+                                <LuChevronDown size={12} />
                                 Show more
                             </>
                         )}
@@ -109,27 +151,46 @@ export function MessageBubble({message}: Readonly<Props>) {
                     </div>
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {hasCleanedText && (
-                            <button
-                                onClick={() => setShowOriginal(!showOriginal)}
-                                className={`no-drag p-1.5 rounded-md hover:bg-white/10 transition-colors ${
-                                    showOriginal ? 'text-white/70' : 'text-white/40 hover:text-white/70'
-                                }`}
-                                title={showOriginal ? 'Show cleaned' : 'Show original'}
-                            >
-                                {showOriginal ? <LuSparkles size={12}/> : <LuFileText size={12}/>}
-                            </button>
-                        )}
+                        <button
+                            onClick={handleSparkleClick}
+                            disabled={isImproving}
+                            className={`no-drag p-1.5 rounded-md hover:bg-white/10 transition-colors ${
+                                isImproving
+                                    ? 'animate-sparkle text-purple-400'
+                                    : showImproved
+                                      ? 'text-purple-400'
+                                      : 'text-white/40 hover:text-white/70'
+                            }`}
+                            title={
+                                isImproving
+                                    ? 'Improving...'
+                                    : !hasImprovedText
+                                      ? 'Improve text'
+                                      : showImproved
+                                        ? 'Show original'
+                                        : 'Show improved'
+                            }
+                        >
+                            {showImproved && hasImprovedText ? (
+                                <LuFileText size={12} />
+                            ) : (
+                                <LuSparkles size={12} />
+                            )}
+                        </button>
                         <button
                             onClick={handleCopy}
                             className="no-drag p-1.5 rounded-md hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
                             title={copied ? 'Copied!' : 'Copy'}
                         >
-                            {copied ? <LuCheck size={12}/> : <LuCopy size={12}/>}
+                            {copied ? (
+                                <LuCheck size={12} />
+                            ) : (
+                                <LuCopy size={12} />
+                            )}
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    );
+    )
 }

@@ -113,6 +113,7 @@ function AppContent() {
             <Sidebar
                 threads={threads.threads}
                 activeThreadId={threads.activeThreadId}
+                generatingTitleFor={threads.generatingTitleFor}
                 isOpen={sidebarOpen}
                 width={sidebarWidth}
                 onWidthChange={setSidebarWidth}
@@ -130,6 +131,7 @@ function AppContent() {
                 title={threads.activeThread?.name ?? 'New Thread'}
                 hasTranscript={!!recording.lastTranscript}
                 copied={recording.copied}
+                isGeneratingTitle={threads.generatingTitleFor === threads.activeThreadId}
                 onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
                 onTitleChange={handleTitleChange}
                 onCopy={recording.handleCopy}
