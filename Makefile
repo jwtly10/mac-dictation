@@ -40,11 +40,14 @@ install_app:
 		echo "⚠️  $(APP_NAME) is currently running (PID: $$(pgrep -x "$(APP_NAME)"))"; \
 		echo "Stopping..."; \
 		pkill -x "$(APP_NAME)"; \
-		echo  "Waiting for the application to close..."; \
+		echo "Waiting for the application to close..."; \
 		sleep 1; \
 		echo "✓ Application stopped."; \
 	fi
-	@rm -rf /Applications/$(APP_NAME).app
+	@if [ -d "/Applications/$(APP_NAME).app" ]; then \
+		mv /Applications/$(APP_NAME).app ~/.Trash/$(APP_NAME)-$$(date +%Y%m%d-%H%M%S).app; \
+		echo "✓ Moved old version to Trash"; \
+	fi
 	@cp -R bin/$(APP_NAME).app /Applications/
 	@echo "✓ Installed to /Applications/$(APP_NAME).app"
 
