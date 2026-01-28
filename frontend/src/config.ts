@@ -1,3 +1,3 @@
 export const config = {
     autoCopyOnTranscription: true,
-} as const;
+} as const

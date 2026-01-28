@@ -1,10 +1,10 @@
-export {StatusIndicator} from './StatusIndicator';
-export {HeaderActions} from './HeaderActions';
-export {RecordingControls} from './RecordingControls';
-export {Sidebar} from './Sidebar';
-export {MessageBubble} from './MessageBubble';
-export {ChatView} from './ChatView';
-export {TitleBar} from './TitleBar';
-export {ThreadHeader} from './ThreadHeader';
-export {Settings} from './Settings';
-export {AlertToast} from './AlertToast';
+export { StatusIndicator } from './StatusIndicator'
+export { HeaderActions } from './HeaderActions'
+export { RecordingControls } from './RecordingControls'
+export { Sidebar } from './Sidebar'
+export { MessageBubble } from './MessageBubble'
+export { ChatView } from './ChatView'
+export { TitleBar } from './TitleBar'
+export { ThreadHeader } from './ThreadHeader'
+export { Settings } from './Settings'
+export { AlertToast } from './AlertToast'

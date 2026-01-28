@@ -1,35 +1,41 @@
-import {createContext, useContext, useState, useCallback, ReactNode} from 'react';
+import {
+    createContext,
+    useContext,
+    useState,
+    useCallback,
+    ReactNode,
+} from 'react'
 
-export type AlertType = 'error' | 'warning' | 'success' | 'info';
+export type AlertType = 'error' | 'warning' | 'success' | 'info'
 
 export interface Alert {
-    id: string;
-    type: AlertType;
-    message: string;
-    timestamp: Date;
+    id: string
+    type: AlertType
+    message: string
+    timestamp: Date
 }
 
 interface AlertContextValue {
-    alerts: Alert[];
-    addAlert: (type: AlertType, message: string) => void;
-    dismissAlert: (id: string) => void;
-    clearAll: () => void;
+    alerts: Alert[]
+    addAlert: (type: AlertType, message: string) => void
+    dismissAlert: (id: string) => void
+    clearAll: () => void
 }
 
-const AlertContext = createContext<AlertContextValue | null>(null);
+const AlertContext = createContext<AlertContextValue | null>(null)
 
-let alertIdCounter = 0;
+let alertIdCounter = 0
 
 function generateId(): string {
-    return `alert-${Date.now()}-${++alertIdCounter}`;
+    return `alert-${Date.now()}-${++alertIdCounter}`
 }
 
 interface AlertProviderProps {
-    children: ReactNode;
+    children: ReactNode
 }
 
-export function AlertProvider({children}: AlertProviderProps) {
-    const [alerts, setAlerts] = useState<Alert[]>([]);
+export function AlertProvider({ children }: AlertProviderProps) {
+    const [alerts, setAlerts] = useState<Alert[]>([])
 
     const addAlert = useCallback((type: AlertType, message: string) => {
         const newAlert: Alert = {
@@ -37,29 +43,31 @@ export function AlertProvider({children}: AlertProviderProps) {
             type,
             message,
             timestamp: new Date(),
-        };
-        setAlerts(prev => [...prev, newAlert]);
-    }, []);
+        }
+        setAlerts((prev) => [...prev, newAlert])
+    }, [])
 
     const dismissAlert = useCallback((id: string) => {
-        setAlerts(prev => prev.filter(alert => alert.id !== id));
-    }, []);
+        setAlerts((prev) => prev.filter((alert) => alert.id !== id))
+    }, [])
 
     const clearAll = useCallback(() => {
-        setAlerts([]);
-    }, []);
+        setAlerts([])
+    }, [])
 
     return (
-        <AlertContext.Provider value={{alerts, addAlert, dismissAlert, clearAll}}>
+        <AlertContext.Provider
+            value={{ alerts, addAlert, dismissAlert, clearAll }}
+        >
             {children}
         </AlertContext.Provider>
-    );
+    )
 }
 
 export function useAlerts(): AlertContextValue {
-    const context = useContext(AlertContext);
+    const context = useContext(AlertContext)
     if (!context) {
-        throw new Error('useAlerts must be used within an AlertProvider');
+        throw new Error('useAlerts must be used within an AlertProvider')
     }
-    return context;
+    return context
 }
