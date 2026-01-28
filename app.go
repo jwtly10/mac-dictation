@@ -113,6 +113,7 @@ type TranscriptionCompletedEvent struct {
 	Message     storage.Message `json:"message"`
 	Thread      *storage.Thread `json:"thread"`
 	IsNewThread bool            `json:"isNewThread"`
+	Empty       bool            `json:"empty"`
 }
 
 // StopRecording stops recording, cleans up provider WS and
@@ -133,6 +134,19 @@ func (a *App) StopRecording() {
 	if err != nil {
 		a.emitError("Error ending transcriber", err)
 		a.updateTrayState(TrayIconDefault, "")
+		return
+	}
+
+	// TODO: Not sure exactly how i want to handle this yet
+	// but we just 'reset' state if no text captured at all
+	if text == "" {
+		a.updateTrayState(TrayIconDefault, "")
+		a.app.Event.Emit(EventTranscriptionDone, TranscriptionCompletedEvent{
+			Message:     storage.Message{},
+			Thread:      nil,
+			IsNewThread: false,
+			Empty:       true,
+		})
 		return
 	}
 
@@ -167,11 +181,10 @@ func (a *App) persistTranscription(text string, durationSecs float64) (*Transcri
 		}
 	}
 
-	// Store only originalText - text cleanup is now opt-in via ImproveMessageText
 	message := &storage.Message{
 		ThreadID:     *a.activeThreadID,
 		OriginalText: text,
-		Text:         "", // Empty until user requests improvement
+		Text:         "",
 		Provider:     "deepgram",
 		DurationSecs: durationSecs,
 	}

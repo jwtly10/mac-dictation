@@ -45,7 +45,7 @@ export function MessageBubble({ message }: Readonly<Props>) {
     const [copied, setCopied] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
     const [needsExpansion, setNeedsExpansion] = useState(false)
-    const [showImproved, setShowImproved] = useState(false)
+    const [showImproved, setShowImproved] = useState(true)
     const [isImproving, setIsImproving] = useState(false)
     const textRef = useRef<HTMLDivElement>(null)
 
@@ -150,7 +150,7 @@ export function MessageBubble({ message }: Readonly<Props>) {
                         <span>{message.provider}</span>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
                         <button
                             onClick={handleSparkleClick}
                             disabled={isImproving}

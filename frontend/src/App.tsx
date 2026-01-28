@@ -131,7 +131,7 @@ function AppContent() {
                 title={threads.activeThread?.name ?? 'New Thread'}
                 hasTranscript={!!recording.lastTranscript}
                 copied={recording.copied}
-                isGeneratingTitle={threads.generatingTitleFor === threads.activeThreadId}
+                isGeneratingTitle={threads.generatingTitleFor !== null && threads.generatingTitleFor === threads.activeThreadId}
                 onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
                 onTitleChange={handleTitleChange}
                 onCopy={recording.handleCopy}
