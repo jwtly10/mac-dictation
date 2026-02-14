@@ -36,6 +36,13 @@ const (
 )
 
 const (
+	// TrayClickStopsRecording controls whether clicking the tray icon while
+	// recording will stop the recording. When false, clicking the tray icon
+	// during recording will only show/hide the window (same as when not recording).
+	TrayClickStopsRecording = false
+)
+
+const (
 	SettingDeepgramAPIKey       = "deepgram_api_key"
 	SettingOpenAIAPIKey         = "openai_api_key"
 	SettingMinRecordingDuration = "min_recording_duration"
@@ -250,6 +257,15 @@ func (a *App) generateTitleAsync(threadID int, text string) {
 		ThreadID: threadID,
 		Title:    title,
 	})
+}
+
+// ToggleRecording starts or stops recording based on current state.
+func (a *App) ToggleRecording() {
+	if a.isRecording() {
+		a.StopRecording()
+	} else {
+		a.StartRecording()
+	}
 }
 
 // CancelRecording cancels recording in progress and emits EventRecordingStopped.

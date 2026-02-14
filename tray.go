@@ -47,13 +47,14 @@ func (a *App) ShowWindow() {
 }
 
 func (a *App) OnTrayClick() {
-	if a.isRecording() {
+	if a.isRecording() && TrayClickStopsRecording {
 		a.StopRecording()
+		return
+	}
+
+	if a.window != nil && a.window.IsVisible() {
+		a.window.Hide()
 	} else {
-		if a.window != nil && a.window.IsVisible() {
-			a.window.Hide()
-		} else {
-			a.ShowWindow()
-		}
+		a.ShowWindow()
 	}
 }

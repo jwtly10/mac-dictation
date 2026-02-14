@@ -130,6 +130,13 @@ func main() {
 		e.Cancel()
 	})
 
+	// Register global hotkey: F6 to toggle recording
+	if err := RegisterGlobalHotkey(KeyCodeF6, 0, func() {
+		appService.ToggleRecording()
+	}); err != nil {
+		slog.Error("failed to register global hotkey", "error", err)
+	}
+
 	err = app.Run()
 	if err != nil {
 		slog.Error("app failed to run", "error", err)
