@@ -140,8 +140,11 @@ func (a *App) StopRecording() {
 	text, err := a.transcriber.EndStream()
 	if err != nil {
 		a.emitError("Error ending transcriber", err)
-		a.updateTrayState(TrayIconDefault, "")
-		return
+
+		// We no longer return the error here
+		//
+		// The following code checks if transcription data exists, if we data we
+		// should continue persisting recording rather than killing the process
 	}
 
 	// TODO: Not sure exactly how i want to handle this yet
