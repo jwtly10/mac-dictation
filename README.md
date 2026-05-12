@@ -1,6 +1,6 @@
 # mac-dictation
 
-Dication on mac sucks so `mac-dictation` uses the best models to accurately transcribe audio in real time.
+Dictation on mac sucks so `mac-dictation` uses the best models to accurately transcribe audio in real time.
 
 ## Feature Set:
 
